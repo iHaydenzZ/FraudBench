@@ -1,0 +1,20 @@
+experiment_name: "mvp_test_run"
+seed: 42
+
+dataset:
+  name: "dummy_dataset"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+
+model:
+  type: "tree"
+  params:
+    max_depth: 3
+
+attack:
+  type: "capgd"
+  epsilon: 0.1
+
+defence:
+  type: "none"

@@ -1,0 +1,2 @@
+timestamp,experiment_name,dataset,model_type,defence_type,attack_type,attack_epsilon,validity_rate,clean_pr_auc,clean_recall,robust_pr_auc,robust_recall,clean_accuracy,robust_accuracy
+2025-12-24T17:32:36.954066,mvp_test_run,dummy_dataset,tree,none,capgd,0.1,0.9550,0.9708,0.9307,0.9708,0.9307,0.9100,0.9100
