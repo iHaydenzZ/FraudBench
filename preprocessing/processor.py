@@ -102,6 +102,6 @@ class DataPreprocessor:
         return preprocessor
 
 
-def get_preprocessor_path(dataset_name: str, seed: int, output_dir: str = "results") -> str:
-    """Returns the path for preprocessor artifacts."""
-    return os.path.join(output_dir, f"preprocessor_{dataset_name}_seed{seed}.joblib")
+def get_preprocessor_path(dataset_name: str, seed: int, n_samples: int, output_dir: str = "results") -> str:
+    """Returns the path for preprocessor artifacts, including dataset size for cache invalidation."""
+    return os.path.join(output_dir, f"preprocessor_{dataset_name}_n{n_samples}_seed{seed}.joblib")

@@ -131,3 +131,55 @@ class TestDatasetSplitter:
 
         pd.testing.assert_frame_equal(split1[0], split2[0])  # X_train
         pd.testing.assert_frame_equal(split1[2], split2[2])  # X_test
+
+    def test_split_save_load_isolation(self, dataset, tmp_path):
+        """Test that split indices are saved and loaded correctly using isolated tmp_path."""
+        # First split - should save
+        split1 = split_dataset(
+            dataset,
+            random_state=123,
+            save_indices=True,
+            output_dir=str(tmp_path)
+        )
+
+        # Second split - should load from cache
+        split2 = split_dataset(
+            dataset,
+            random_state=123,
+            save_indices=True,
+            output_dir=str(tmp_path)
+        )
+
+        pd.testing.assert_frame_equal(split1[0], split2[0])  # X_train
+        pd.testing.assert_frame_equal(split1[2], split2[2])  # X_test
+
+        # Verify file was created with correct naming
+        n_samples = len(dataset.X)
+        expected_file = tmp_path / f"split_indices_ccfd_n{n_samples}_seed123.json"
+        assert expected_file.exists()
+
+    def test_split_cache_invalidation_on_size_change(self, tmp_path):
+        """Test that cache is invalidated when dataset size changes."""
+        # Load two different sized datasets
+        dataset_small = load_dataset("ccfd", config={"sample_frac": 0.005})
+        dataset_larger = load_dataset("ccfd", config={"sample_frac": 0.01})
+
+        # Split small dataset
+        split_dataset(
+            dataset_small,
+            random_state=42,
+            save_indices=True,
+            output_dir=str(tmp_path)
+        )
+
+        # Split larger dataset with same seed - should create new file, not reuse
+        split_dataset(
+            dataset_larger,
+            random_state=42,
+            save_indices=True,
+            output_dir=str(tmp_path)
+        )
+
+        # Both files should exist with different sizes in filename
+        files = list(tmp_path.glob("split_indices_*.json"))
+        assert len(files) == 2

@@ -52,7 +52,8 @@ def main():
     import os
 
     dataset_name = dataset.meta.get('name', 'unknown')
-    preprocessor_path = get_preprocessor_path(dataset_name, seed)
+    n_samples = len(dataset.X)
+    preprocessor_path = get_preprocessor_path(dataset_name, seed, n_samples)
 
     if os.path.exists(preprocessor_path):
         print(f"    Loading existing preprocessor...")

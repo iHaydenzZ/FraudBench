@@ -9,14 +9,19 @@ dataset:
   sample_frac: 0.1  # Use 10% sample for faster iteration (full dataset is 590k rows)
   use_identity: false
 
+# Tree model recommended for IEEE-CIS due to:
+# - Many categorical features (14 object columns)
+# - High missing value rates
+# - XGBoost handles these natively without extra preprocessing
 model:
-  type: "neural"
+  type: "tree"
   params:
-    epochs: 15
-    hidden_dim: 256
-    batch_size: 512
-    lr: 0.001
+    max_depth: 6
+    n_estimators: 100
+    learning_rate: 0.1
 
+# Note: CAPGD requires gradients, so it will skip for tree models
+# Use neural model if you need adversarial attack evaluation
 attack:
   type: "capgd"
   epsilon: 0.1

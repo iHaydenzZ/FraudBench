@@ -51,6 +51,67 @@ class TestConstraintSchema:
         assert schema.features['category'].type == 'categorical'
         assert set(schema.features['category'].allowed_values) == {'A', 'B', 'C'}
 
+    def test_schema_handles_nan_in_numeric(self):
+        """Test that schema handles NaN values in numeric columns."""
+        X = pd.DataFrame({
+            'with_nan': [1.0, np.nan, 3.0, np.nan, 5.0],
+            'all_nan': [np.nan, np.nan, np.nan, np.nan, np.nan]
+        })
+        feature_types = {'with_nan': 'numeric', 'all_nan': 'numeric'}
+
+        schema = ConstraintSchema.from_data(X, feature_types)
+
+        # Should use non-NaN values for bounds
+        assert schema.features['with_nan'].min_val == 1.0
+        assert schema.features['with_nan'].max_val == 5.0
+        assert schema.features['with_nan'].has_missing == True
+
+        # All-NaN column should have default bounds
+        assert schema.features['all_nan'].min_val == 0.0
+        assert schema.features['all_nan'].max_val == 1.0
+        assert schema.features['all_nan'].has_missing == True
+
+    def test_schema_handles_mixed_types_categorical(self):
+        """Test that schema handles mixed types in categorical columns."""
+        X = pd.DataFrame({
+            'mixed': ['A', 1, 'B', 2.5, None]
+        })
+        feature_types = {'mixed': 'categorical'}
+
+        # Should not raise an error
+        schema = ConstraintSchema.from_data(X, feature_types)
+
+        assert schema.features['mixed'].type == 'categorical'
+        # NaN should be tracked via has_missing, not in allowed_values
+        assert schema.features['mixed'].has_missing == True
+        assert None not in schema.features['mixed'].allowed_values
+
+    def test_schema_handles_inf_values(self):
+        """Test that schema handles infinite values."""
+        X = pd.DataFrame({
+            'with_inf': [1.0, np.inf, 3.0, -np.inf, 5.0]
+        })
+        feature_types = {'with_inf': 'numeric'}
+
+        schema = ConstraintSchema.from_data(X, feature_types)
+
+        # Inf values should be clamped
+        assert schema.features['with_inf'].min_val == -1e10
+        assert schema.features['with_inf'].max_val == 1e10
+
+    def test_schema_handles_constant_column(self):
+        """Test that schema handles constant columns (min == max)."""
+        X = pd.DataFrame({
+            'constant': [5.0, 5.0, 5.0, 5.0]
+        })
+        feature_types = {'constant': 'numeric'}
+
+        schema = ConstraintSchema.from_data(X, feature_types)
+
+        # Should add buffer to avoid min == max
+        assert schema.features['constant'].min_val == 5.0
+        assert schema.features['constant'].max_val == 6.0
+
 
 class TestConstraintValidator:
     """Tests for ConstraintValidator functionality."""
