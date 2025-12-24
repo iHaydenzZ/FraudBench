@@ -70,7 +70,7 @@ def project_constraints(x_adv: torch.Tensor, x_orig: torch.Tensor, schema: Const
 def capgd_attack(model, X: pd.DataFrame, y: pd.Series, schema: ConstraintSchema, feature_types: Dict[str, str], params: Dict[str, Any] = None) -> pd.DataFrame:
     """
     Constrained APGD attack.
-    
+
     Args:
         model: Must expose .model (PyTorch module)
         X: Input DataFrame (Clean)
@@ -79,44 +79,38 @@ def capgd_attack(model, X: pd.DataFrame, y: pd.Series, schema: ConstraintSchema,
     """
     if params is None:
         params = {}
-        
+
     epsilon = params.get("epsilon", 0.1)
     steps = params.get("steps", 10)
-    step_size = params.get("step_size", epsilon / 4) # heuristic
-    
+    step_size = params.get("step_size", epsilon / 4)
+
     # Check if model supports torch
     if not hasattr(model, 'model') or not isinstance(model.model, nn.Module):
         print("Warning: Model does not appear to be a PyTorch model. CAPGD requires gradients. Skipping.")
         return X
-        
+
     torch_model = model.model
     device = model.device
     torch_model.eval()
-    
+
     # Prepare Data
     X_tensor = torch.tensor(X.values, dtype=torch.float32).to(device)
     y_tensor = torch.tensor(y.values, dtype=torch.float32).unsqueeze(1).to(device)
     feature_names = X.columns.tolist()
-    
-    # Check if we should attack:
-    # We only attack positive samples? Or all?
-    # Usually we want to flip label. 
-    # Fraud detection: Goal is to mask Fraud (1) as Legitimate (0).
-    # So we target class 0 for y=1 samples.
-    # For y=0, maybe we don't care (unless we want false alarms).
-    # Let's attack ALL for now to degrade perf generally, or focus on y=1.
-    # Plan says: "reduce fraud PR-AUC / recall". So maximizing error on Positive class.
-    
-    # Initialize x_adv
-    # Random start?
+
+    # Initialize x_adv with random start
     noise = torch.zeros_like(X_tensor).uniform_(-epsilon, epsilon)
     x_adv = X_tensor + noise
-    # Project initial
     x_adv = project_constraints(x_adv, X_tensor, schema, feature_names, feature_types)
     x_adv = x_adv.detach()
     x_adv.requires_grad = True
-    
-    criterion = nn.BCELoss()
+
+    # Check if model outputs logits (uses BCEWithLogitsLoss during training)
+    use_logits = hasattr(model, '_use_logits') and model._use_logits
+    if use_logits:
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        criterion = nn.BCELoss()
     
     for step in range(steps):
         outputs = torch_model(x_adv)

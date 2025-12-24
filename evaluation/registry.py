@@ -14,7 +14,7 @@ class ExperimentRegistry:
                 writer = csv.writer(f)
                 # Define schema
                 writer.writerow([
-                    "timestamp", 
+                    "timestamp",
                     "experiment_name",
                     "dataset",
                     "model_type",
@@ -22,17 +22,29 @@ class ExperimentRegistry:
                     "attack_type",
                     "attack_epsilon",
                     "validity_rate",
+                    "adv_validity_rate",
                     "clean_pr_auc",
                     "clean_recall",
                     "robust_pr_auc",
                     "robust_recall",
                     "clean_accuracy",
-                    "robust_accuracy"
+                    "robust_accuracy",
+                    "train_time_sec",
+                    "attack_time_sec"
                 ])
 
-    def log_experiment(self, config: Dict[str, Any], metrics_clean: Dict[str, float], metrics_robust: Dict[str, float] = None, validity_rate: float = 1.0):
+    def log_experiment(
+        self,
+        config: Dict[str, Any],
+        metrics_clean: Dict[str, float],
+        metrics_robust: Dict[str, float] = None,
+        validity_rate: float = 1.0,
+        adv_validity_rate: float = None,
+        train_time_sec: float = None,
+        attack_time_sec: float = None
+    ):
         if metrics_robust is None:
-            metrics_robust = {} # Empty or copy clean if no attack? Empty implies N/A.
+            metrics_robust = {}
 
         row = [
             datetime.now().isoformat(),
@@ -43,12 +55,15 @@ class ExperimentRegistry:
             config.get('attack', {}).get('type', 'none'),
             config.get('attack', {}).get('epsilon', 0.0),
             f"{validity_rate:.4f}",
+            f"{adv_validity_rate:.4f}" if adv_validity_rate is not None else "n/a",
             f"{metrics_clean.get('pr_auc', 0):.4f}",
             f"{metrics_clean.get('recall', 0):.4f}",
             f"{metrics_robust.get('pr_auc', 0):.4f}",
             f"{metrics_robust.get('recall', 0):.4f}",
             f"{metrics_clean.get('accuracy', 0):.4f}",
-            f"{metrics_robust.get('accuracy', 0):.4f}"
+            f"{metrics_robust.get('accuracy', 0):.4f}",
+            f"{train_time_sec:.2f}" if train_time_sec is not None else "n/a",
+            f"{attack_time_sec:.2f}" if attack_time_sec is not None else "n/a"
         ]
         
         with open(self.registry_path, 'a', newline='') as f:

@@ -1,12 +1,13 @@
 [project]
-name = "mvp"
+name = "frbs"
 version = "0.1.0"
-description = "Add your description here"
+description = "Fraud-Robust Benchmark Suite: Adversarial robustness evaluation for fraud detection"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.4.0",
     "pandas>=2.3.3",
+    "pytest>=9.0.2",
     "pyyaml>=6.0.3",
     "scikit-learn>=1.8.0",
     "torch>=2.9.1",

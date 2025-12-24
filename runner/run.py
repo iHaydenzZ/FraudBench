@@ -1,6 +1,7 @@
 import argparse
 import yaml
 import sys
+import time
 from pathlib import Path
 
 def load_config(config_path):
@@ -26,33 +27,48 @@ def main():
     print(f"\n[1] Loading dataset: {config['dataset']['name']}...")
     from datasets.loader import load_dataset
     from datasets.splitter import split_dataset
-    
-    dataset = load_dataset(config['dataset']['name'])
+
+    dataset_config = config['dataset'].copy()
+    dataset_name = dataset_config.pop('name')
+    dataset = load_dataset(dataset_name, config=dataset_config)
     print(f"    Loaded {len(dataset.X)} samples with {len(dataset.feature_names)} features.")
+    if 'fraud_rate' in dataset.meta:
+        print(f"    Fraud rate: {dataset.meta['fraud_rate']:.4f} ({dataset.meta['fraud_rate']*100:.2f}%)")
     
     # 2. Split Dataset
-    print(f"[2] Splitting dataset (test_size={config['dataset'].get('test_size', 0.2)})...")
+    seed = config.get('seed', 42)
+    print(f"[2] Splitting dataset (test_size={config['dataset'].get('test_size', 0.2)}, seed={seed})...")
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
-        dataset, 
+        dataset,
         test_size=config['dataset'].get('test_size', 0.2),
-        val_size=config['dataset'].get('val_size', 0.2)
+        val_size=config['dataset'].get('val_size', 0.2),
+        random_state=seed
     )
     print(f"    Train: {X_train.shape[0]}, Val: {X_val.shape[0]}, Test: {X_test.shape[0]}")
 
     # 3. Preprocessing
     print("\n[3] Preprocessing features...")
-    from preprocessing.processor import DataPreprocessor
-    
-    preprocessor = DataPreprocessor(dataset.feature_types)
-    print("    Fitting preprocessor on Train set...")
-    X_train_processed = preprocessor.fit_transform(X_train)
-    
+    from preprocessing.processor import DataPreprocessor, get_preprocessor_path
+    import os
+
+    dataset_name = dataset.meta.get('name', 'unknown')
+    preprocessor_path = get_preprocessor_path(dataset_name, seed)
+
+    if os.path.exists(preprocessor_path):
+        print(f"    Loading existing preprocessor...")
+        preprocessor = DataPreprocessor.load(preprocessor_path)
+        X_train_processed = preprocessor.transform(X_train)
+    else:
+        preprocessor = DataPreprocessor(dataset.feature_types)
+        print("    Fitting preprocessor on Train set...")
+        X_train_processed = preprocessor.fit_transform(X_train)
+        preprocessor.save(preprocessor_path)
+
     print("    Transforming Val and Test sets...")
     X_val_processed = preprocessor.transform(X_val)
     X_test_processed = preprocessor.transform(X_test)
-    
+
     print(f"    Processed feature count: {X_train_processed.shape[1]}")
-    # print(f"    Sample features: {X_train_processed.columns.tolist()[:5]}")
 
     print("\n[4] Training Model...")
     model_type = config['model']['type']
@@ -75,8 +91,10 @@ def main():
         raise ValueError(f"Unknown model type: {model_type}")
         
     print(f"    Initializing {model_type} model with params: {model_params}")
+    train_start = time.time()
     model.fit(X_train_processed, y_train)
-    print("    Training complete.")
+    train_time = time.time() - train_start
+    print(f"    Training complete. (Time: {train_time:.2f}s)")
     
     print("\n[5] Evaluating Model (Clean)...")
     from evaluation.metrics import compute_metrics
@@ -126,54 +144,37 @@ def main():
         input_validator = InputValidator(schema_processed)
 
     attack_config = config.get('attack', {})
+    attack_time = None
+    adv_validity_rate = None
+
     if attack_config.get('type') == 'capgd':
         print(f"    Generating adversarial examples (eps={attack_config.get('epsilon')})...")
-        # Generate attacks on Test set
-        # Note: CAPGD needs raw inputs?
-        # If model expects preprocessed, we need to handle that.
-        # Our neural model expects preprocessed inputs.
-        # So we attack in PREPROCESSED space?
-        # Plan says: "Constraints Layer ... standard interface ... generate(model, X, y, constraints)".
-        # Ideally, we attack raw X, then preprocess, then model. (Differentiable preprocessing).
-        # BUT our preprocessor uses sklearn (non-differentiable).
-        # So for MVP, we assume we attack the *features* fed to the model (Post-Preprocessing).
-        # This implies constraints should be on PROCESSED features.
-        # BUT we inferred constraints on RAW features.
-        
-        # Conflict: 
-        # 1. Attack Model Space (Processed) -> Schema must be for Processed.
-        # 2. Attack Raw Space -> Preprocessor must be differentiable.
-        
-        # Resolution for MVP:
-        # Attack Processed Space.
-        # Re-infer schema for Processed Data?
-        # Yes.
-        
+
         print("    Inferring constraints from PROCESSED Train set for attack...")
-        schema_processed = ConstraintSchema.from_data(X_train_processed, dataset.feature_types) # Feature types keys might differ?
-        # Processed data usually loses 'feature_types' mapping unless we track it.
-        # For dummy (all numeric) -> all numeric. 
-        # Processor output is all numeric (StandardScaler + OneHot).
-        # So we can assume all numeric.
         fake_types = {c: 'numeric' for c in X_train_processed.columns}
         schema_processed = ConstraintSchema.from_data(X_train_processed, fake_types)
-        
+
+        attack_start = time.time()
         X_test_adv = capgd_attack(
-            model, 
-            X_test_processed, 
-            y_test, 
-            schema_processed, 
+            model,
+            X_test_processed,
+            y_test,
+            schema_processed,
             fake_types,
             params=attack_config
         )
+        attack_time = time.time() - attack_start
+        print(f"    Attack complete. (Time: {attack_time:.2f}s)")
+
+        # Validate adversarial samples against processed schema
+        print("    Validating adversarial samples...")
+        adv_validator = ConstraintValidator(schema_processed)
+        adv_validity_rate = adv_validator.validate(X_test_adv)
+        print(f"    Adversarial Validity Rate: {adv_validity_rate:.4f}")
         
         print("\n[8] Evaluating Model (Robust)...")
         
         # Apply Input Validation if active
-        if input_validator:
-            print("    Applying Input Validation Defence to Adversarial Samples...")
-            X_test_adv = input_validator.transform(X_test_adv)
-            
         if input_validator:
             print("    Applying Input Validation Defence to Adversarial Samples...")
             X_test_adv = input_validator.transform(X_test_adv)
@@ -195,7 +196,15 @@ def main():
     print("\n[9] Logging Results...")
     from evaluation.registry import ExperimentRegistry
     registry = ExperimentRegistry()
-    registry.log_experiment(config, metrics, metrics_adv, validity_rate)
+    registry.log_experiment(
+        config,
+        metrics,
+        metrics_adv,
+        validity_rate,
+        adv_validity_rate=adv_validity_rate,
+        train_time_sec=train_time,
+        attack_time_sec=attack_time
+    )
 
     print("\nMVP Run Complete.")
 

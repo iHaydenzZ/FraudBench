@@ -1,4 +1,4 @@
-experiment_name: "mvp_ccfd_baseline"
+experiment_name: "ccfd_baseline"
 seed: 42
 
 dataset:
@@ -6,14 +6,15 @@ dataset:
   split_strategy: "stratified"
   test_size: 0.2
   val_size: 0.2
-  sample_frac: 0.1  # Use 10% sample for faster iteration
+  # sample_frac: 0.1  # Uncomment for faster iteration (10% sample)
 
 model:
   type: "neural"
   params:
-    epochs: 15
+    epochs: 20
     hidden_dim: 128
     batch_size: 256
+    lr: 0.001
 
 attack:
   type: "capgd"

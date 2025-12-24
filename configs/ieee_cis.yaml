@@ -1,0 +1,26 @@
+experiment_name: "ieee_cis_baseline"
+seed: 42
+
+dataset:
+  name: "ieee_cis"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+  sample_frac: 0.1  # Use 10% sample for faster iteration (full dataset is 590k rows)
+  use_identity: false
+
+model:
+  type: "neural"
+  params:
+    epochs: 15
+    hidden_dim: 256
+    batch_size: 512
+    lr: 0.001
+
+attack:
+  type: "capgd"
+  epsilon: 0.1
+  steps: 10
+
+defence:
+  type: "none"

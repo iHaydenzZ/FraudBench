@@ -1,4 +1,6 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import os
+import joblib
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
@@ -67,3 +69,39 @@ class DataPreprocessor:
     def fit_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         self.fit(X)
         return self.transform(X)
+
+    def save(self, path: str):
+        """Saves the fitted preprocessor to disk."""
+        if self.pipeline is None:
+            raise ValueError("Preprocessor has not been fitted yet.")
+
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+
+        data = {
+            'pipeline': self.pipeline,
+            'feature_types': self.feature_types,
+            'feature_names_out': self.feature_names_out,
+            'method': self.method
+        }
+        joblib.dump(data, path)
+        print(f"    Preprocessor saved to {path}")
+
+    @classmethod
+    def load(cls, path: str) -> 'DataPreprocessor':
+        """Loads a fitted preprocessor from disk."""
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Preprocessor file not found: {path}")
+
+        data = joblib.load(path)
+
+        preprocessor = cls(data['feature_types'], data['method'])
+        preprocessor.pipeline = data['pipeline']
+        preprocessor.feature_names_out = data['feature_names_out']
+
+        print(f"    Preprocessor loaded from {path}")
+        return preprocessor
+
+
+def get_preprocessor_path(dataset_name: str, seed: int, output_dir: str = "results") -> str:
+    """Returns the path for preprocessor artifacts."""
+    return os.path.join(output_dir, f"preprocessor_{dataset_name}_seed{seed}.joblib")
