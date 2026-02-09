@@ -18,3 +18,5 @@ results/*.json
 # Raw data files (not source code in datasets/)
 datasets/CCFD/
 datasets/ieee-fraud-detection/
+datasets/LCLD/
+datasets/Sparkov/
