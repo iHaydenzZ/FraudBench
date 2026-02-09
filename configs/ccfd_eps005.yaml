@@ -1,0 +1,24 @@
+experiment_name: "ccfd_neural_eps005"
+seed: 42
+
+dataset:
+  name: "ccfd"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+
+model:
+  type: "neural"
+  params:
+    epochs: 20
+    hidden_dim: 128
+    batch_size: 256
+    lr: 0.001
+
+attack:
+  type: "capgd"
+  epsilon: 0.05
+  steps: 10
+
+defence:
+  type: "none"
