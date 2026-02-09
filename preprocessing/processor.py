@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 import os
+import re
 import joblib
 import pandas as pd
 import numpy as np
@@ -54,8 +55,7 @@ class DataPreprocessor:
 
     @staticmethod
     def _sanitize_column_names(columns):
-        """Replace characters that XGBoost forbids in feature names: [ ] <"""
-        import re
+        """Replace characters that XGBoost forbids in feature names: [ ] < >"""
         return [re.sub(r'[\[\]<>]', '_', c) for c in columns]
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:

@@ -16,6 +16,7 @@ class ExperimentRegistry:
                 writer.writerow([
                     "timestamp",
                     "experiment_name",
+                    "seed",
                     "dataset",
                     "model_type",
                     "defence_type",
@@ -53,6 +54,7 @@ class ExperimentRegistry:
         row = [
             datetime.now().isoformat(),
             config.get('experiment_name', 'n/a'),
+            config.get('seed', 42),
             config['dataset']['name'],
             config['model']['type'],
             config.get('defence', {}).get('type', 'none'),

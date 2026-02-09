@@ -8,9 +8,14 @@ def load_config(config_path):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(description="FRBS MVP Runner")
     parser.add_argument("--config", type=str, required=True, help="Path to the config file")
+    parser.add_argument("--seed", type=int, default=None, help="Override config seed")
+    return parser
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -20,7 +25,11 @@ def main():
 
     print(f"Loading config from {config_path}...")
     config = load_config(config_path)
-    
+
+    # Apply seed override from CLI
+    if args.seed is not None:
+        config["seed"] = args.seed
+
     print("Config loaded successfully.")
     
     # 1. Load Dataset

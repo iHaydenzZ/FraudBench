@@ -142,7 +142,7 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
     - Loans with status 'Current' are dropped (outcome unknown)
     - Post-origination/leakage columns dropped
     - High-missing (>50%) and constant columns dropped
-    - ~11.6% default rate after filtering
+    - ~19.6% default rate after filtering
     """
     path = os.path.join(data_root, "LCLD", "loan.csv")
 
@@ -179,7 +179,6 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
         "debt_settlement_flag", "debt_settlement_flag_date",
         "settlement_status", "settlement_date", "settlement_amount",
         "settlement_percentage", "settlement_term",
-        "collection_recovery_fee",
     ]
 
     # Dates (not directly usable without feature engineering)
@@ -207,7 +206,7 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
     X = df[feature_cols].reset_index(drop=True)
     y = df["target"].reset_index(drop=True)
 
-    # Optional sampling
+    # Sampling after column filtering so the >50% missing threshold is computed on full data
     if sample_frac is not None and sample_frac < 1.0:
         n = int(len(X) * sample_frac)
         idx = X.sample(n=n, random_state=42).index

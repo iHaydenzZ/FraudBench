@@ -1,0 +1,28 @@
+experiment_name: "sparkov_neural_input_val"
+seed: 42
+
+dataset:
+  name: "sparkov"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+  sample_frac: 0.1
+
+model:
+  type: "neural"
+  params:
+    epochs: 20
+    hidden_dim: 128
+    batch_size: 256
+    lr: 0.001
+
+attack:
+  type: "capgd"
+  epsilon: 0.1
+  steps: 10
+
+defence:
+  type: "input_validation"
+  params:
+    mode: "sanitise"
+    z_threshold: 3.0
