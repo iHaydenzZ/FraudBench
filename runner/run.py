@@ -83,6 +83,11 @@ def main():
 
     # Check for Adversarial Training Defence
     defence_config = config.get('defence', {})
+    if defence_config.get('type') == 'adversarial_training' and model_type == 'tree':
+        raise ValueError(
+            "Adversarial training is not supported for tree models. "
+            "Use defence.type: 'input_validation' or 'none' instead."
+        )
     if defence_config.get('type') == 'adversarial_training':
         print("    Configuring Adversarial Training...")
         model_params['adv_training'] = True
@@ -144,63 +149,83 @@ def main():
         input_validator.fit(X_train_processed)
 
     attack_config = config.get('attack', {})
-    attack_time = None
-    adv_validity_rate = None
 
-    if attack_config.get('type') == 'capgd':
-        print(f"    Generating adversarial examples (eps={attack_config.get('epsilon')})...")
+    # Determine epsilon values to sweep
+    epsilon_values = attack_config.get('epsilon_values', None)
+    if epsilon_values is None:
+        # Backward compat: single epsilon
+        epsilon_values = [attack_config.get('epsilon', 0.1)]
 
-        attack_start = time.time()
-        X_test_adv = capgd_attack(
-            model,
-            X_test_processed,
-            y_test,
-            processed_schema,
-            processed_feature_types,
-            params=attack_config
-        )
-        attack_time = time.time() - attack_start
-        print(f"    Attack complete. (Time: {attack_time:.2f}s)")
-
-        # Validate adversarial samples against processed schema
-        print("    Validating adversarial samples...")
-        adv_validator = ConstraintValidator(processed_schema)
-        adv_validity_rate = adv_validator.validate(X_test_adv)
-        print(f"    Adversarial Validity Rate: {adv_validity_rate:.4f}")
-        
-        print("\n[8] Evaluating Model (Robust)...")
-        
-        # Apply Input Validation if active
-        if input_validator:
-            print("    Applying Input Validation Defence to Adversarial Samples...")
-            X_test_adv = input_validator.transform(X_test_adv)
-            
-        y_probs_adv = model.predict_proba(X_test_adv)
-        metrics_adv = compute_metrics(y_test, y_probs_adv)
-        
-        print("    Robust Test Metrics:")
-        for k, v in metrics_adv.items():
-            print(f"      {k}: {v:.4f}")
-            
-        print("\n    Comparison (Clean vs Robust):")
-        print(f"    PR-AUC: {metrics['pr_auc']:.4f} -> {metrics_adv['pr_auc']:.4f}")
-    
-    else:
-        print("    No attack configured.")
-        metrics_adv = None
-
-    print("\n[9] Logging Results...")
     from evaluation.registry import ExperimentRegistry
     registry = ExperimentRegistry()
-    registry.log_experiment(
-        config,
-        metrics,
-        metrics_adv,
-        validity_rate,
-        adv_validity_rate=adv_validity_rate,
-        train_time_sec=train_time,
-        attack_time_sec=attack_time
-    )
+
+    if attack_config.get('type') == 'capgd':
+        for eps in epsilon_values:
+            attack_time = None
+            adv_validity_rate = None
+
+            iter_attack_config = {**attack_config, 'epsilon': eps}
+            print(f"\n    --- Epsilon = {eps} ---")
+            print(f"    Generating adversarial examples (eps={eps})...")
+
+            attack_start = time.time()
+            X_test_adv = capgd_attack(
+                model,
+                X_test_processed,
+                y_test,
+                processed_schema,
+                processed_feature_types,
+                params=iter_attack_config
+            )
+            attack_time = time.time() - attack_start
+            print(f"    Attack complete. (Time: {attack_time:.2f}s)")
+
+            # Validate adversarial samples against processed schema
+            print("    Validating adversarial samples...")
+            adv_validator = ConstraintValidator(processed_schema)
+            adv_validity_rate = adv_validator.validate(X_test_adv)
+            print(f"    Adversarial Validity Rate: {adv_validity_rate:.4f}")
+
+            print("\n[8] Evaluating Model (Robust)...")
+
+            # Apply Input Validation if active
+            if input_validator:
+                print("    Applying Input Validation Defence to Adversarial Samples...")
+                X_test_adv = input_validator.transform(X_test_adv)
+
+            y_probs_adv = model.predict_proba(X_test_adv)
+            metrics_adv = compute_metrics(y_test, y_probs_adv)
+
+            print("    Robust Test Metrics:")
+            for k, v in metrics_adv.items():
+                print(f"      {k}: {v:.4f}")
+
+            print("\n    Comparison (Clean vs Robust):")
+            print(f"    PR-AUC: {metrics['pr_auc']:.4f} -> {metrics_adv['pr_auc']:.4f}")
+
+            # Log this epsilon's results
+            print(f"\n[9] Logging Results (eps={eps})...")
+            iter_config = {**config, 'attack': iter_attack_config}
+            registry.log_experiment(
+                iter_config,
+                metrics,
+                metrics_adv,
+                validity_rate,
+                adv_validity_rate=adv_validity_rate,
+                train_time_sec=train_time,
+                attack_time_sec=attack_time
+            )
+
+    else:
+        print("    No attack configured.")
+        print("\n[9] Logging Results...")
+        registry.log_experiment(
+            config,
+            metrics,
+            None,
+            validity_rate,
+            train_time_sec=train_time,
+        )
 
     print("\nMVP Run Complete.")
 
