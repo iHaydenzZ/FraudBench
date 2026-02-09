@@ -80,6 +80,91 @@ class TestIEEECISLoader:
 
 
 @pytest.mark.skipif(
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "LCLD", "loan.csv")),
+    reason="LCLD dataset not available"
+)
+class TestLCLDLoader:
+    """Tests for LCLD dataset loader."""
+
+    def test_load_lcld(self):
+        """Test loading LCLD dataset."""
+        dataset = load_dataset("lcld", config={"sample_frac": 0.01})
+
+        assert isinstance(dataset, DatasetObj)
+        assert dataset.meta["name"] == "lcld"
+        assert len(dataset.feature_names) > 50  # Should have ~63 features
+        assert "loan_amnt" in dataset.feature_names
+        assert "int_rate" in dataset.feature_names
+
+    def test_lcld_feature_types(self):
+        """Test that LCLD has both numeric and categorical features."""
+        dataset = load_dataset("lcld", config={"sample_frac": 0.01})
+
+        cat_count = sum(1 for t in dataset.feature_types.values() if t == "categorical")
+        num_count = sum(1 for t in dataset.feature_types.values() if t == "numeric")
+        assert cat_count > 0
+        assert num_count > 0
+
+    def test_lcld_fraud_rate(self):
+        """Test that default rate is in expected range."""
+        dataset = load_dataset("lcld", config={"sample_frac": 0.1})
+
+        fraud_rate = dataset.meta["fraud_rate"]
+        # LCLD has ~19.6% default rate
+        assert 0.10 < fraud_rate < 0.30
+
+    def test_lcld_no_leakage_columns(self):
+        """Test that post-origination leakage columns are removed."""
+        dataset = load_dataset("lcld", config={"sample_frac": 0.01})
+
+        leakage = ["total_pymnt", "recoveries", "out_prncp", "last_pymnt_amnt"]
+        for col in leakage:
+            assert col not in dataset.feature_names
+
+
+@pytest.mark.skipif(
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "Sparkov", "fraudTrain.csv")),
+    reason="Sparkov dataset not available"
+)
+class TestSparkovLoader:
+    """Tests for Sparkov dataset loader."""
+
+    def test_load_sparkov(self):
+        """Test loading Sparkov dataset."""
+        dataset = load_dataset("sparkov", config={"sample_frac": 0.01})
+
+        assert isinstance(dataset, DatasetObj)
+        assert dataset.meta["name"] == "sparkov"
+        assert "amt" in dataset.feature_names
+        assert "category" in dataset.feature_names
+
+    def test_sparkov_feature_types(self):
+        """Test that Sparkov has both numeric and categorical features."""
+        dataset = load_dataset("sparkov", config={"sample_frac": 0.01})
+
+        cat_count = sum(1 for t in dataset.feature_types.values() if t == "categorical")
+        num_count = sum(1 for t in dataset.feature_types.values() if t == "numeric")
+        assert cat_count > 0
+        assert num_count > 0
+
+    def test_sparkov_fraud_rate(self):
+        """Test that fraud rate is in expected range."""
+        dataset = load_dataset("sparkov", config={"sample_frac": 0.1})
+
+        fraud_rate = dataset.meta["fraud_rate"]
+        # Sparkov has ~0.52% fraud rate
+        assert 0.001 < fraud_rate < 0.02
+
+    def test_sparkov_no_pii_columns(self):
+        """Test that PII columns are removed."""
+        dataset = load_dataset("sparkov", config={"sample_frac": 0.01})
+
+        pii = ["first", "last", "cc_num", "street", "dob", "trans_num"]
+        for col in pii:
+            assert col not in dataset.feature_names
+
+
+@pytest.mark.skipif(
     not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "CCFD", "creditcard.csv")),
     reason="CCFD dataset not available"
 )

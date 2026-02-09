@@ -52,18 +52,24 @@ class DataPreprocessor:
 
         return self
 
+    @staticmethod
+    def _sanitize_column_names(columns):
+        """Replace characters that XGBoost forbids in feature names: [ ] <"""
+        import re
+        return [re.sub(r'[\[\]<>]', '_', c) for c in columns]
+
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.pipeline is None:
             raise ValueError("Preprocessor has not been fitted yet.")
-        
+
         X_array = self.pipeline.transform(X)
-        
+
         # Convert back to DataFrame
         if self.feature_names_out is not None:
-             columns = self.feature_names_out
+             columns = self._sanitize_column_names(self.feature_names_out)
         else:
              columns = [f"feat_{i}" for i in range(X_array.shape[1])]
-             
+
         return pd.DataFrame(X_array, columns=columns, index=X.index)
 
     def fit_transform(self, X: pd.DataFrame) -> pd.DataFrame:
