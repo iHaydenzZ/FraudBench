@@ -49,7 +49,7 @@ class TestCCFDLoader:
 
 
 @pytest.mark.skipif(
-    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "IEEE-CIS", "ieee-fraud-detection", "train_transaction.csv")),
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "ieee-fraud-detection", "train_transaction.csv")),
     reason="IEEE-CIS dataset not available"
 )
 class TestIEEECISLoader:

@@ -4,8 +4,8 @@ import os
 import pandas as pd
 import numpy as np
 
-# Default path to external datasets
-DEFAULT_DATA_ROOT = "/Users/xitong/Local_Document/AAA_CAPSTONE/datasets"
+# Default path to external datasets (relative to project root)
+DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets")
 
 
 @dataclass
@@ -82,7 +82,7 @@ def load_ieee_cis(
         sample_frac: Optional sampling fraction for faster iteration
         use_identity: Whether to merge identity data (adds more features but more missing)
     """
-    txn_path = os.path.join(data_root, "IEEE-CIS", "ieee-fraud-detection", "train_transaction.csv")
+    txn_path = os.path.join(data_root, "ieee-fraud-detection", "train_transaction.csv")
 
     if not os.path.exists(txn_path):
         raise FileNotFoundError(f"IEEE-CIS dataset not found at {txn_path}")
@@ -91,7 +91,7 @@ def load_ieee_cis(
 
     # Optionally merge identity data
     if use_identity:
-        id_path = os.path.join(data_root, "IEEE-CIS", "ieee-fraud-detection", "train_identity.csv")
+        id_path = os.path.join(data_root, "ieee-fraud-detection", "train_identity.csv")
         if os.path.exists(id_path):
             df_id = pd.read_csv(id_path)
             df = df.merge(df_id, on="TransactionID", how="left")
