@@ -71,16 +71,25 @@ def main():
 
     print(f"    Processed feature count: {X_train_processed.shape[1]}")
 
+    # Build processed-space schema (used by both attacks and defences)
+    from constraints.schema import ConstraintSchema
+    processed_feature_types = {c: 'numeric' for c in X_train_processed.columns}
+    processed_schema = ConstraintSchema.from_data(X_train_processed, processed_feature_types)
+    processed_feature_names = X_train_processed.columns.tolist()
+
     print("\n[4] Training Model...")
     model_type = config['model']['type']
     model_params = config['model'].get('params', {})
-    
+
     # Check for Adversarial Training Defence
     defence_config = config.get('defence', {})
     if defence_config.get('type') == 'adversarial_training':
         print("    Configuring Adversarial Training...")
         model_params['adv_training'] = True
         model_params['adv_epsilon'] = defence_config.get('params', {}).get('epsilon', 0.1)
+        model_params['adv_schema'] = processed_schema
+        model_params['adv_feature_names'] = processed_feature_names
+        model_params['adv_feature_types'] = processed_feature_types
     
     if model_type == "tree":
         from models.tree import TreeModel
@@ -107,19 +116,8 @@ def main():
         print(f"      {k}: {v:.4f}")
 
     print("\n[6] Constraints setup...")
-    from constraints.schema import ConstraintSchema
     from constraints.validator import ConstraintValidator
-    
-    # Infer schema from TRAIN (before preprocessing? Or after? 
-    # Usually constraints are on the INPUT features *before* preprocessing if attacks generate raw inputs.
-    # CAPGD usually generates inputs in the model space. 
-    # IF preprocessing is part of the model (e.g. in pipeline), then attack generates RAW inputs.
-    # IF model assumes preprocessed inputs, then attack generates preprocessed inputs.
-    
-    # MVP Plan: "Fit preprocessing on train only; apply to val/test." 
-    # Ideally attack happens on RAW features x -> preprocessor -> model.
-    # So constraints should be on RAW features.
-    
+
     print("    Inferring constraints from raw Train set...")
     schema = ConstraintSchema.from_data(X_train, dataset.feature_types)
     validator = ConstraintValidator(schema)
@@ -137,12 +135,13 @@ def main():
     if defence_config.get('type') == 'input_validation':
         print("    Configuring Input Validation Defence...")
         from defences.input_validation import InputValidator
-        # Use schema from processed train (since attack is in processed space)
-        # Note: If we use processed schema, we clip to processed bounds (approx -3 to 3).
-        # This makes sense.
-        fake_types = {c: 'numeric' for c in X_train_processed.columns}
-        schema_processed = ConstraintSchema.from_data(X_train_processed, fake_types)
-        input_validator = InputValidator(schema_processed)
+        iv_params = defence_config.get('params', {})
+        input_validator = InputValidator(
+            processed_schema,
+            mode=iv_params.get('mode', 'sanitise'),
+            z_threshold=iv_params.get('z_threshold', 3.0),
+        )
+        input_validator.fit(X_train_processed)
 
     attack_config = config.get('attack', {})
     attack_time = None
@@ -151,17 +150,13 @@ def main():
     if attack_config.get('type') == 'capgd':
         print(f"    Generating adversarial examples (eps={attack_config.get('epsilon')})...")
 
-        print("    Inferring constraints from PROCESSED Train set for attack...")
-        fake_types = {c: 'numeric' for c in X_train_processed.columns}
-        schema_processed = ConstraintSchema.from_data(X_train_processed, fake_types)
-
         attack_start = time.time()
         X_test_adv = capgd_attack(
             model,
             X_test_processed,
             y_test,
-            schema_processed,
-            fake_types,
+            processed_schema,
+            processed_feature_types,
             params=attack_config
         )
         attack_time = time.time() - attack_start
@@ -169,7 +164,7 @@ def main():
 
         # Validate adversarial samples against processed schema
         print("    Validating adversarial samples...")
-        adv_validator = ConstraintValidator(schema_processed)
+        adv_validator = ConstraintValidator(processed_schema)
         adv_validity_rate = adv_validator.validate(X_test_adv)
         print(f"    Adversarial Validity Rate: {adv_validity_rate:.4f}")
         
