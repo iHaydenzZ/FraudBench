@@ -20,3 +20,6 @@ datasets/CCFD/
 datasets/ieee-fraud-detection/
 datasets/LCLD/
 datasets/Sparkov/
+
+# AI-generated files
+.claude/
