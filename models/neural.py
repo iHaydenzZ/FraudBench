@@ -67,7 +67,10 @@ class NeuralModel(BaseModel):
         
         adv_training = self.params.get("adv_training", False)
         adv_epsilon = self.params.get("adv_epsilon", 0.1)
-        
+        adv_schema = self.params.get("adv_schema", None)
+        adv_feature_names = self.params.get("adv_feature_names", None)
+        adv_feature_types = self.params.get("adv_feature_types", None)
+
         if adv_training:
             from defences.adversarial_training import adversarial_train_step
             print(f"  Enabled Adversarial Training (eps={adv_epsilon})")
@@ -76,7 +79,11 @@ class NeuralModel(BaseModel):
             total_loss = 0
             for X_batch, y_batch in loader:
                 if adv_training:
-                    loss = adversarial_train_step(self.model, X_batch, y_batch, criterion, optimizer, self.device, epsilon=adv_epsilon)
+                    loss = adversarial_train_step(
+                        self.model, X_batch, y_batch, criterion, optimizer, self.device,
+                        epsilon=adv_epsilon, schema=adv_schema,
+                        feature_names=adv_feature_names, feature_types=adv_feature_types
+                    )
                     total_loss += loss
                 else:
                     optimizer.zero_grad()
