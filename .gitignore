@@ -11,10 +11,6 @@ wheels/
 # Virtual environments
 .venv
 
-# AI-generated files
-.claude/
-
-
 # Local Results
 results/
 
