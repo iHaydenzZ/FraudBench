@@ -59,3 +59,70 @@ class TestAdversarialTraining:
 
         probs = model.predict_proba(X)
         assert probs.shape == (50,)
+
+
+class TestInputValidation:
+    """Tests for input validation defence."""
+
+    def test_numeric_clipping(self):
+        """Numeric features are clipped to schema bounds."""
+        from defences.input_validation import InputValidator
+
+        schema = ConstraintSchema()
+        schema.features['x'] = FeatureConstraint(name='x', type='numeric', min_val=0.0, max_val=10.0)
+
+        iv = InputValidator(schema)
+        X_train = pd.DataFrame({'x': [1.0, 5.0, 9.0]})
+        iv.fit(X_train)
+
+        X_bad = pd.DataFrame({'x': [-5.0, 5.0, 15.0]})
+        result = iv.transform(X_bad)
+        assert result['x'].tolist() == [0.0, 5.0, 10.0]
+
+    def test_outlier_detection_sanitise_mode(self):
+        """Outliers beyond k*std are clipped in sanitise mode."""
+        from defences.input_validation import InputValidator
+
+        schema = ConstraintSchema()
+        schema.features['x'] = FeatureConstraint(name='x', type='numeric', min_val=-100.0, max_val=100.0)
+
+        iv = InputValidator(schema, mode='sanitise', z_threshold=2.0)
+        X_train = pd.DataFrame({'x': np.random.normal(0, 1, 1000)})
+        iv.fit(X_train)
+
+        X_test = pd.DataFrame({'x': [0.0, 5.0, -5.0]})  # 5.0 and -5.0 are outliers at z=2
+        result = iv.transform(X_test)
+
+        # Outliers should be clipped to +/- z_threshold * std
+        assert abs(result['x'].iloc[0] - 0.0) < 0.01  # Normal value unchanged
+        assert result['x'].iloc[1] < 5.0  # Clipped down
+        assert result['x'].iloc[2] > -5.0  # Clipped up
+
+    def test_outlier_detection_reject_mode(self):
+        """Outliers beyond k*std are rejected in reject mode."""
+        from defences.input_validation import InputValidator
+
+        schema = ConstraintSchema()
+        schema.features['x'] = FeatureConstraint(name='x', type='numeric', min_val=-100.0, max_val=100.0)
+
+        iv = InputValidator(schema, mode='reject', z_threshold=2.0)
+        X_train = pd.DataFrame({'x': np.random.normal(0, 1, 1000)})
+        iv.fit(X_train)
+
+        X_test = pd.DataFrame({'x': [0.0, 5.0, -5.0]})
+        result, metadata = iv.transform(X_test, return_metadata=True)
+
+        assert metadata['n_rejected'] >= 1
+        assert metadata['total'] == 3
+
+    def test_backward_compat_no_fit(self):
+        """Transform still works without calling fit (no outlier detection)."""
+        from defences.input_validation import InputValidator
+
+        schema = ConstraintSchema()
+        schema.features['x'] = FeatureConstraint(name='x', type='numeric', min_val=0.0, max_val=10.0)
+
+        iv = InputValidator(schema)
+        X_bad = pd.DataFrame({'x': [-5.0, 5.0, 15.0]})
+        result = iv.transform(X_bad)  # Should not crash
+        assert result['x'].tolist() == [0.0, 5.0, 10.0]
