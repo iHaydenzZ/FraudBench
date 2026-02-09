@@ -11,8 +11,10 @@ wheels/
 # Virtual environments
 .venv
 
-# Local Results
-results/
+# Local Results (cache artifacts, not registry)
+results/*.joblib
+results/*.json
 
-# Data files
-datasets/
+# Raw data files (not source code in datasets/)
+datasets/CCFD/
+datasets/ieee-fraud-detection/
