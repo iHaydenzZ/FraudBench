@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "mcp__plugin_serena_serena__list_memories"
+      "mcp__plugin_serena_serena__list_memories",
+      "Bash(uv run pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: constraint-aware adversarial training using project_constraints\n\nadversarial_train_step now accepts optional schema, feature_names,\nfeature_types params. When provided, applies project_constraints after\neach PGD step to keep adversarial examples within domain bounds.\nNeuralModel threads these params through from its config dict.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: input validation with outlier detection, sanitise/reject modes\n\nInputValidator now supports mode=''sanitise'' \\(clip outliers to z*std\\)\nand mode=''reject'' \\(flag outliers\\). fit\\(\\) computes per-feature mean/std.\nBackward compatible: works without fit\\(\\) for basic bound clipping.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(uv run python:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

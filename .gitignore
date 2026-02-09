@@ -5,6 +5,18 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+
 
 # Virtual environments
 .venv
+
+# AI-generated files
+.claude/
+
+
+# Local Results
+results/
+
+# Data files
+datasets/
