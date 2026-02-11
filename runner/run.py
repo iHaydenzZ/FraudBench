@@ -141,9 +141,8 @@ def main():
     print(f"    Validity Rate: {validity_rate:.4f}")
 
 
-    print("\n[7] Running Attack (CAPGD)...")
-    from attacks.capgd import capgd_attack
-    
+    print("\n[7] Running Attack...")
+
     # Setup Input Validation Defence if enabled
     input_validator = None
     if defence_config.get('type') == 'input_validation':
@@ -158,6 +157,7 @@ def main():
         input_validator.fit(X_train_processed)
 
     attack_config = config.get('attack', {})
+    attack_type = attack_config.get('type', 'none')
 
     # Determine epsilon values to sweep
     epsilon_values = attack_config.get('epsilon_values', None)
@@ -168,7 +168,22 @@ def main():
     from evaluation.registry import ExperimentRegistry
     registry = ExperimentRegistry()
 
-    if attack_config.get('type') == 'capgd':
+    def _run_attack(atype, mdl, X, y, schema, ftypes, params):
+        """Dispatch to the appropriate attack implementation."""
+        if atype == 'capgd':
+            from attacks.capgd import capgd_attack
+            return capgd_attack(mdl, X, y, schema, ftypes, params)
+        elif atype == 'hopskipjump':
+            from attacks.hopskipjump import hopskipjump_attack
+            return hopskipjump_attack(mdl, X, y, schema, ftypes, params)
+        elif atype == 'square':
+            from attacks.square import square_attack
+            return square_attack(mdl, X, y, schema, ftypes, params)
+        else:
+            raise ValueError(f"Unknown attack type: {atype}")
+
+    if attack_type in ('capgd', 'hopskipjump', 'square'):
+        print(f"    Attack type: {attack_type}")
         for eps in epsilon_values:
             attack_time = None
             adv_validity_rate = None
@@ -178,7 +193,8 @@ def main():
             print(f"    Generating adversarial examples (eps={eps})...")
 
             attack_start = time.time()
-            X_test_adv = capgd_attack(
+            X_test_adv = _run_attack(
+                attack_type,
                 model,
                 X_test_processed,
                 y_test,

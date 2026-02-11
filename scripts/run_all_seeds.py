@@ -35,6 +35,15 @@ CONFIGS = [
     # Sparkov: tree + defences
     "configs/sparkov_tree.yaml",
     "configs/sparkov_tree_input_val.yaml",
+    # Phase 4: Black-box attacks (tree models)
+    "configs/ccfd_tree_hsj.yaml",
+    "configs/ccfd_tree_square.yaml",
+    "configs/ieee_cis_tree_hsj.yaml",
+    "configs/ieee_cis_tree_square.yaml",
+    "configs/lcld_tree_hsj.yaml",
+    "configs/lcld_tree_square.yaml",
+    "configs/sparkov_tree_hsj.yaml",
+    "configs/sparkov_tree_square.yaml",
 ]
 
 def main():

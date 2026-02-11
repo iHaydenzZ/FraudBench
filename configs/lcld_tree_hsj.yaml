@@ -1,0 +1,26 @@
+experiment_name: "lcld_tree_hopskipjump"
+seed: 42
+
+dataset:
+  name: "lcld"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+  sample_frac: 0.1
+
+model:
+  type: "tree"
+  params:
+    max_depth: 6
+    n_estimators: 100
+    learning_rate: 0.1
+
+attack:
+  type: "hopskipjump"
+  max_iter: 20
+  max_eval: 1000
+  init_eval: 100
+  norm: "inf"
+
+defence:
+  type: "none"

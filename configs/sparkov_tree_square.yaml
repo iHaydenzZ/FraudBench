@@ -1,0 +1,25 @@
+experiment_name: "sparkov_tree_square"
+seed: 42
+
+dataset:
+  name: "sparkov"
+  split_strategy: "stratified"
+  test_size: 0.2
+  val_size: 0.2
+  sample_frac: 0.1
+
+model:
+  type: "tree"
+  params:
+    max_depth: 6
+    n_estimators: 100
+    learning_rate: 0.1
+
+attack:
+  type: "square"
+  epsilon: 0.1
+  max_iter: 100
+  norm: "inf"
+
+defence:
+  type: "none"
