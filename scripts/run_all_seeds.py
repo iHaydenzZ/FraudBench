@@ -44,6 +44,11 @@ CONFIGS = [
     "configs/lcld_tree_square.yaml",
     "configs/sparkov_tree_hsj.yaml",
     "configs/sparkov_tree_square.yaml",
+    # Epsilon sweeps
+    "configs/ccfd_eps_sweep.yaml",
+    "configs/ieee_cis_eps_sweep.yaml",
+    "configs/lcld_eps_sweep.yaml",
+    "configs/sparkov_eps_sweep.yaml",
 ]
 
 def main():

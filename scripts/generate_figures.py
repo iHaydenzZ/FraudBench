@@ -227,12 +227,78 @@ def plot_training_time(df: pd.DataFrame, output_dir: str):
     print("  Saved training_time.png")
 
 
+def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
+    """
+    Figure 6: Robustness curves — Robust PR-AUC vs epsilon per dataset.
+
+    Filters to experiment groups with >1 epsilon value, then plots one subplot
+    per dataset with one line per defence_type (error bars from std across seeds).
+    """
+    agg = aggregate_seeds(df)
+    agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
+
+    if agg.empty:
+        print("  Skipping robustness_curves: no robust data available.")
+        return
+
+    # Keep only groups (dataset + model + defence + attack) with >1 epsilon value
+    group_cols = ["dataset", "model_type", "defence_type", "attack_type"]
+    counts = agg.groupby(group_cols)["attack_epsilon"].nunique().reset_index(name="n_eps")
+    multi_eps = counts[counts["n_eps"] > 1]
+    if multi_eps.empty:
+        print("  Skipping robustness_curves: no multi-epsilon groups found.")
+        return
+
+    agg = agg.merge(multi_eps[group_cols], on=group_cols, how="inner")
+    agg = agg.sort_values("attack_epsilon")
+
+    datasets = sorted(agg["dataset"].unique())
+    n = len(datasets)
+    if n == 0:
+        print("  Skipping robustness_curves: no datasets with multi-epsilon data.")
+        return
+
+    ncols = min(n, 3)
+    nrows = (n + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows), squeeze=False)
+
+    for idx, dataset in enumerate(datasets):
+        ax = axes[idx // ncols][idx % ncols]
+        sub = agg[agg["dataset"] == dataset]
+
+        defences = sorted(sub["defence_type"].unique())
+        for defence in defences:
+            d = sub[sub["defence_type"] == defence].sort_values("attack_epsilon")
+            yerr = d["robust_pr_auc_std"].fillna(0)
+            ax.errorbar(
+                d["attack_epsilon"], d["robust_pr_auc_mean"],
+                yerr=yerr, marker="o", capsize=3, label=defence,
+            )
+
+        ax.set_xlabel("Epsilon")
+        ax.set_ylabel("Robust PR-AUC")
+        ax.set_title(dataset.upper())
+        ax.legend(fontsize=8)
+        ax.set_ylim(0, 1.05)
+
+    # Hide unused subplots
+    for idx in range(n, nrows * ncols):
+        axes[idx // ncols][idx % ncols].set_visible(False)
+
+    fig.suptitle("Robustness Curves: Robust PR-AUC vs Epsilon", fontsize=14)
+    fig.tight_layout()
+    fig.savefig(os.path.join(output_dir, "robustness_curves.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved robustness_curves.png")
+
+
 FIGURE_REGISTRY = {
     "robustness_bars": plot_robustness_bars,
     "attack_comparison": plot_attack_comparison,
     "summary_table": plot_summary_table,
     "defence_heatmap": plot_defence_heatmap,
     "training_time": plot_training_time,
+    "robustness_curves": plot_robustness_curves,
 }
 
 

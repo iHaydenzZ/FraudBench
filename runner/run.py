@@ -119,7 +119,15 @@ def main():
     model.fit(X_train_processed, y_train)
     train_time = time.time() - train_start
     print(f"    Training complete. (Time: {train_time:.2f}s)")
-    
+
+    # Save model checkpoint
+    model_dir = os.path.join("results", "models")
+    os.makedirs(model_dir, exist_ok=True)
+    ext = ".pt" if model_type == "neural" else ".joblib"
+    model_path = os.path.join(model_dir, f"{config['experiment_name']}_seed{seed}{ext}")
+    model.save(model_path)
+    print(f"    Model saved to {model_path}")
+
     print("\n[5] Evaluating Model (Clean)...")
     from evaluation.metrics import compute_metrics
     y_probs_clean = model.predict_proba(X_test_processed)

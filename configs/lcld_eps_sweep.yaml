@@ -1,11 +1,12 @@
-experiment_name: "ccfd_neural_eps_sweep"
+experiment_name: "lcld_neural_eps_sweep"
 seed: 42
 
 dataset:
-  name: "ccfd"
+  name: "lcld"
   split_strategy: "stratified"
   test_size: 0.2
   val_size: 0.2
+  sample_frac: 0.1  # Use 10% sample for faster iteration (full dataset is 1.3M rows)
 
 model:
   type: "neural"

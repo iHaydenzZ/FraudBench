@@ -178,3 +178,46 @@ class TestConstraintValidator:
 
         validity_rate = validator.validate(X)
         assert validity_rate == 1.0
+
+    def test_nan_categorical_with_has_missing_passes(self):
+        """Test that NaN in a categorical column passes when has_missing=True."""
+        schema = ConstraintSchema()
+        schema.features['cat'] = FeatureConstraint(
+            name='cat',
+            type='categorical',
+            allowed_values=['A', 'B', 'C'],
+            has_missing=True
+        )
+        validator = ConstraintValidator(schema)
+
+        sample = pd.Series({'cat': np.nan})
+        assert validator.validate_sample(sample) is True
+
+    def test_nan_categorical_without_has_missing_fails(self):
+        """Test that NaN in a categorical column fails when has_missing=False."""
+        schema = ConstraintSchema()
+        schema.features['cat'] = FeatureConstraint(
+            name='cat',
+            type='categorical',
+            allowed_values=['A', 'B', 'C'],
+            has_missing=False
+        )
+        validator = ConstraintValidator(schema)
+
+        sample = pd.Series({'cat': np.nan})
+        assert validator.validate_sample(sample) is False
+
+    def test_nan_numeric_with_has_missing_passes(self):
+        """Test that NaN in a numeric column passes when has_missing=True."""
+        schema = ConstraintSchema()
+        schema.features['num'] = FeatureConstraint(
+            name='num',
+            type='numeric',
+            min_val=0.0,
+            max_val=10.0,
+            has_missing=True
+        )
+        validator = ConstraintValidator(schema)
+
+        sample = pd.Series({'num': np.nan})
+        assert validator.validate_sample(sample) is True

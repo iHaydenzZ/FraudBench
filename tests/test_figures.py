@@ -87,3 +87,132 @@ class TestAggregateSeeds:
 
         agg = aggregate_seeds(df)
         assert len(agg) == 2  # Two dataset groups
+
+
+class TestStatisticalTests:
+    """Tests for pairwise defence statistical comparisons."""
+
+    def _make_registry(self, seeds=(42, 123, 456), robust_none=(0.60, 0.65, 0.70),
+                       robust_adv=(0.80, 0.82, 0.84), robust_iv=(0.55, 0.58, 0.53)):
+        """Build a minimal registry DataFrame for testing."""
+        rows = []
+        for defence, values in [("none", robust_none),
+                                ("adversarial_training", robust_adv),
+                                ("input_validation", robust_iv)]:
+            for seed, val in zip(seeds, values):
+                rows.append({
+                    "timestamp": "2025-01-01T00:00:00",
+                    "experiment_name": "test",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": defence,
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": val,
+                })
+        return pd.DataFrame(rows)
+
+    def test_pairwise_comparison_significant(self):
+        """Test that a known large difference is detected as significant."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        df = self._make_registry(
+            robust_none=(0.60, 0.65, 0.70),
+            robust_adv=(0.90, 0.92, 0.94),
+            robust_iv=(0.55, 0.58, 0.53),
+        )
+        results = pairwise_defence_tests(df)
+        assert len(results) == 3  # three pairwise comparisons
+
+        # none vs adversarial_training should be significant (large gap)
+        row_na = results[
+            (results["defence_a"] == "none")
+            & (results["defence_b"] == "adversarial_training")
+        ].iloc[0]
+        assert row_na["significant"] == True  # noqa: E712
+        assert row_na["p_value"] < 0.05
+        assert row_na["mean_diff"] < 0  # none < adv_training
+        assert row_na["cohens_d"] != 0.0
+
+    def test_pairwise_comparison_not_significant(self):
+        """Test that nearly identical values are NOT significant."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        df = self._make_registry(
+            robust_none=(0.700, 0.701, 0.699),
+            robust_adv=(0.701, 0.700, 0.700),
+            robust_iv=(0.699, 0.700, 0.701),
+        )
+        results = pairwise_defence_tests(df)
+        # No comparison should be significant for near-identical values
+        for _, row in results.iterrows():
+            if row["note"] == "":
+                assert row["significant"] == False  # noqa: E712
+
+    def test_identical_values_handled(self):
+        """Test that identical robust_pr_auc across defences is handled."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        df = self._make_registry(
+            robust_none=(0.80, 0.80, 0.80),
+            robust_adv=(0.80, 0.80, 0.80),
+            robust_iv=(0.80, 0.80, 0.80),
+        )
+        results = pairwise_defence_tests(df)
+        for _, row in results.iterrows():
+            assert row["significant"] == False  # noqa: E712
+            assert row["note"] == "identical values across seeds"
+
+    def test_missing_defence_skipped(self):
+        """Test graceful handling when one defence has no data."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        # Only 'none' and 'input_validation', no 'adversarial_training'
+        rows = []
+        for defence, values in [("none", (0.60, 0.65, 0.70)),
+                                ("input_validation", (0.55, 0.58, 0.53))]:
+            for seed, val in zip((42, 123, 456), values):
+                rows.append({
+                    "seed": seed, "dataset": "ccfd", "model_type": "tree",
+                    "defence_type": defence, "robust_pr_auc": val,
+                })
+        df = pd.DataFrame(rows)
+        results = pairwise_defence_tests(df)
+
+        # Comparisons involving adversarial_training should be skipped
+        at_rows = results[
+            (results["defence_a"] == "adversarial_training")
+            | (results["defence_b"] == "adversarial_training")
+        ]
+        for _, row in at_rows.iterrows():
+            assert "insufficient" in row["note"]
+
+    def test_cohens_d_computation(self):
+        """Test Cohen's d with known values."""
+        from scripts.statistical_tests import compute_cohens_d
+
+        # Two groups with mean diff = 1 and pooled std = 1 -> d = 1.0
+        g1 = np.array([1.0, 2.0, 3.0])
+        g2 = np.array([0.0, 1.0, 2.0])
+        d = compute_cohens_d(g1, g2)
+        assert d == pytest.approx(1.0, abs=1e-6)
+
+        # Identical groups -> d = 0
+        d_zero = compute_cohens_d(g1, g1)
+        assert d_zero == 0.0
+
+    def test_output_csv(self, tmp_path):
+        """Test that results CSV is written correctly."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        df = self._make_registry()
+        results = pairwise_defence_tests(df)
+        csv_path = tmp_path / "statistical_tests.csv"
+        results.to_csv(str(csv_path), index=False)
+
+        loaded = pd.read_csv(str(csv_path))
+        assert len(loaded) == len(results)
+        assert "p_value" in loaded.columns
+        assert "cohens_d" in loaded.columns
+        assert "significant" in loaded.columns

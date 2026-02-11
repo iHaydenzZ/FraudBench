@@ -1,16 +1,16 @@
-# FRBS: Fraud-Robust Benchmark Suite
+# FraudBench: Fraud-Robust Benchmark Suite
 
-A reproducible benchmark suite for evaluating adversarial robustness of fraud detection models. This MVP implements constrained adversarial attacks (CAPGD) and defences on tabular fraud detection datasets.
+A reproducible benchmark suite for evaluating adversarial robustness of fraud detection models. FraudBench compares adversarial training and defence methods across four financial fraud datasets, benchmarking XGBoost and Neural (MLP) models against white-box and black-box adversarial attacks.
 
 ## Features
 
-- **Datasets**: CCFD (Credit Card Fraud Detection) and IEEE-CIS Fraud Detection
+- **Datasets**: CCFD, IEEE-CIS, LCLD (Lending Club), and Sparkov (simulated transactions)
 - **Models**: Tree-based (XGBoost) and Neural (MLP) with automatic class weighting
-- **Attacks**: CAPGD (Constrained Auto-PGD) with domain-aware projections
+- **Attacks**: CAPGD (white-box), HopSkipJump (decision-based black-box), Square Attack (score-based black-box)
 - **Defences**: Adversarial training and input validation
 - **Metrics**: PR-AUC, precision, recall, F1 (fraud-first evaluation)
 - **Reproducibility**: Config-driven experiments with cached splits and preprocessing
-- **Robustness**: Handles NaN, mixed types, and edge cases in constraint inference
+- **Multi-seed evaluation**: 3 seeds per config for statistical rigour
 
 ## Installation
 
@@ -57,42 +57,52 @@ uv run python -m runner.run --config configs/mvp.yaml
 | Precision | 84.2% |
 
 - Model: XGBoost (depth 6, 100 estimators)
-- Note: Tree models don't support gradient-based attacks
+- Note: Tree models don't support gradient-based attacks (CAPGD); use HopSkipJump or Square Attack
 
 ## Project Structure
 
 ```
-MVP/
-├── attacks/          # Attack implementations (CAPGD)
+FraudBench/
+├── attacks/          # Attack implementations (CAPGD, HopSkipJump, Square)
 ├── configs/          # Experiment configurations (YAML)
 ├── constraints/      # Feature constraint schema and validation
 ├── datasets/         # Dataset loaders and cards
-│   └── cards/        # Dataset documentation (ccfd.md, ieee_cis.md)
+│   └── cards/        # Dataset documentation (ccfd, ieee_cis, lcld, sparkov)
 ├── defences/         # Defence implementations
 ├── evaluation/       # Metrics and results registry
 ├── models/           # Model wrappers (Tree, Neural)
 ├── preprocessing/    # Data preprocessing pipeline
 ├── results/          # Experiment results and cached artifacts
 ├── runner/           # Experiment runner
-└── tests/            # Unit tests (27 tests)
+├── scripts/          # Batch run and figure generation scripts
+└── tests/            # Unit tests (64 tests)
 ```
 
 ## Datasets
 
-| Dataset | Samples | Features | Fraud Rate | Recommended Model |
-|---------|---------|----------|------------|-------------------|
-| CCFD | 284,807 | 30 | 0.17% | Neural (all numeric) |
-| IEEE-CIS | 590,540 | 392 | 3.5% | Tree (handles categoricals) |
+| Dataset | Samples | Features | Fraud Rate | Source |
+|---------|---------|----------|------------|--------|
+| CCFD | 284,807 | 30 | 0.17% | Kaggle (real) |
+| IEEE-CIS | 590,540 | 392 | 3.5% | IEEE-CIS / Vesta (real) |
+| LCLD | ~2.26M (filtered) | ~74 | 19.6% | Lending Club (real) |
+| Sparkov | ~1.85M | 23 | 0.52% | Sparkov (simulated) |
+
+See `datasets/cards/` for detailed dataset documentation (preprocessing, known issues, citation).
 
 Datasets should be placed at the path specified by `DEFAULT_DATA_ROOT` in `datasets/loader.py`:
 ```
 /path/to/datasets/
 ├── CCFD/
 │   └── creditcard.csv
-└── IEEE-CIS/
-    └── ieee-fraud-detection/
-        ├── train_transaction.csv
-        └── train_identity.csv (optional)
+├── IEEE-CIS/
+│   └── ieee-fraud-detection/
+│       ├── train_transaction.csv
+│       └── train_identity.csv (optional)
+├── LCLD/
+│   └── accepted_2007_to_2018Q4.csv
+└── Sparkov/
+    ├── fraudTrain.csv
+    └── fraudTest.csv
 ```
 
 ## Configuration
@@ -104,7 +114,7 @@ experiment_name: "ccfd_baseline"
 seed: 42
 
 dataset:
-  name: "ccfd"           # or "ieee_cis"
+  name: "ccfd"           # or "ieee_cis", "lcld", "sparkov"
   test_size: 0.2
   val_size: 0.2
   sample_frac: 0.1       # Optional: sample for faster iteration
@@ -117,9 +127,10 @@ model:
     batch_size: 256
 
 attack:
-  type: "capgd"
+  type: "capgd"          # or "hopskipjump", "square"
   epsilon: 0.1
-  steps: 10
+  steps: 10              # capgd only
+  epsilon_values: [0.05, 0.1, 0.2]  # optional: sweep multiple epsilons
 
 defence:
   type: "none"           # or "adversarial_training", "input_validation"
@@ -176,7 +187,7 @@ model:
     n_estimators: 100
     learning_rate: 0.1
 ```
-Note: Does not support gradient-based attacks (CAPGD skipped).
+Note: Does not support gradient-based attacks (CAPGD skipped). Use HopSkipJump or Square Attack instead.
 
 ### Neural Model (MLP)
 Supports adversarial attacks. Automatic class weighting for imbalanced data.
@@ -193,7 +204,7 @@ model:
 ## Attacks
 
 ### CAPGD (Constrained Auto-PGD)
-White-box attack with constraint-aware projection:
+White-box attack with constraint-aware projection. Requires gradients -- **neural models only**.
 ```yaml
 attack:
   type: "capgd"
@@ -206,6 +217,22 @@ Features:
 - Respects feature bounds (min/max from training data)
 - Projects to feasible region after each step
 - Reports constraint validity rate
+
+### HopSkipJump
+Decision-based black-box attack via ART. Works on any model type (tree or neural).
+```yaml
+attack:
+  type: "hopskipjump"
+  epsilon: 0.1
+```
+
+### Square Attack
+Score-based black-box attack via ART. Works on any model type (tree or neural).
+```yaml
+attack:
+  type: "square"
+  epsilon: 0.1
+```
 
 ## Defences
 
@@ -225,7 +252,7 @@ defence:
 
 ## Testing
 
-Run the test suite (27 tests):
+Run the test suite (64 tests across 8 test files):
 
 ```bash
 uv run pytest tests/ -v
@@ -235,7 +262,11 @@ Test coverage includes:
 - Dataset loading and splitting
 - Constraint schema inference (NaN, mixed types, inf values)
 - Cache invalidation logic
-- Attack projection
+- Attack projection (CAPGD, HopSkipJump, Square)
+- Defence integration (adversarial training, input validation)
+- Results registry
+- Runner pipeline
+- Figure generation
 
 ## Constraint Handling
 
@@ -245,6 +276,26 @@ The constraint schema handles edge cases:
 - **Infinite values**: Clamped to +/-1e10
 - **Constant columns**: Buffer added to avoid min==max
 - **Missing tracking**: `has_missing` flag on each feature
+
+## Reproducing Results
+
+```bash
+# Run all experiments (28 configs x 3 seeds = 84 experiments)
+uv run python scripts/run_all_seeds.py
+
+# Generate figures from results
+uv run python scripts/generate_figures.py
+
+# Run a single experiment with a specific seed
+uv run python -m runner.run --config configs/ccfd.yaml --seed 42
+```
+
+Results are logged to `results/registry.csv`. Figures are saved to `results/figures/`.
+
+## Known Limitations
+
+- **Adversarial training + tree models**: Adversarial training is incompatible with tree models because the PGD inner loop requires gradients. These combinations are documented as N/A in results.
+- **CAPGD + tree models**: CAPGD is a gradient-based (white-box) attack and only works on neural models. Use HopSkipJump or Square Attack for tree models.
 
 ## License
 

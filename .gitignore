@@ -14,6 +14,7 @@ wheels/
 # Local Results (cache artifacts, not registry)
 results/*.joblib
 results/*.json
+results/models/
 
 # Raw data files (not source code in datasets/)
 datasets/CCFD/

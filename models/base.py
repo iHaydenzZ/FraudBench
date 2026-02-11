@@ -16,6 +16,17 @@ class BaseModel(ABC):
         """Returns probability of positive class (fraud)."""
         pass
 
+    @abstractmethod
+    def save(self, path: str) -> None:
+        """Save model checkpoint to disk."""
+        pass
+
+    @classmethod
+    @abstractmethod
+    def load(cls, path: str) -> 'BaseModel':
+        """Load model checkpoint from disk. Returns a new instance."""
+        pass
+
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
         """Simple evaluation returning basic metrics."""
         from sklearn.metrics import average_precision_score, precision_score, recall_score, accuracy_score

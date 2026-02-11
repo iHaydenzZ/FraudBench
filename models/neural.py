@@ -5,6 +5,7 @@ import torch.optim as optim
 import pandas as pd
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
+import os
 
 class SimpleMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim=64, use_sigmoid=True):
@@ -106,3 +107,36 @@ class NeuralModel(BaseModel):
             if hasattr(self, '_use_logits') and self._use_logits:
                 outputs = torch.sigmoid(outputs)
         return outputs.cpu().numpy().flatten()
+
+    def save(self, path: str) -> None:
+        """Save model state_dict and config needed to reconstruct the architecture."""
+        checkpoint = {
+            "state_dict": self.model.state_dict(),
+            "config": {
+                "input_dim": self.model.fc1.in_features,
+                "hidden_dim": self.hidden_dim,
+                "use_sigmoid": self.model.use_sigmoid,
+            },
+            "params": self.params,
+            "_use_logits": getattr(self, '_use_logits', False),
+        }
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        torch.save(checkpoint, path)
+
+    @classmethod
+    def load(cls, path: str) -> 'NeuralModel':
+        """Load a NeuralModel from a checkpoint file."""
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        checkpoint = torch.load(path, map_location=device, weights_only=False)
+        # Filter out non-serialisable adv_* keys that cannot be stored in YAML
+        params = {k: v for k, v in checkpoint["params"].items()
+                  if not k.startswith("adv_")}
+        instance = cls(params)
+        cfg = checkpoint["config"]
+        instance.model = SimpleMLP(
+            cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]
+        ).to(instance.device)
+        instance.model.load_state_dict(checkpoint["state_dict"])
+        instance._use_logits = checkpoint.get("_use_logits", False)
+        instance.model.eval()
+        return instance
