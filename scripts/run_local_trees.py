@@ -7,6 +7,8 @@ import subprocess
 import sys
 import time
 
+from tqdm import tqdm
+
 SEEDS = [42, 123, 456]
 
 CONFIGS = [
@@ -35,34 +37,24 @@ CONFIGS = [
 
 def main():
     total = len(CONFIGS) * len(SEEDS)
-    done = 0
     failed = []
     start = time.time()
 
-    print(f"Running {total} tree experiments ({len(CONFIGS)} configs x {len(SEEDS)} seeds)")
-    print("=" * 60)
+    experiments = [(config, seed) for config in CONFIGS for seed in SEEDS]
+    pbar = tqdm(experiments, desc="Tree experiments", unit="exp")
 
-    for config in CONFIGS:
-        for seed in SEEDS:
-            done += 1
-            print(f"\n[{done}/{total}] {config} --seed {seed}")
-            print("-" * 60)
+    for config, seed in pbar:
+        pbar.set_postfix_str(f"{config} seed={seed}")
 
-            cmd = [sys.executable, "-m", "runner.run", "--config", config, "--seed", str(seed)]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+        cmd = [sys.executable, "-m", "runner.run", "--config", config, "--seed", str(seed)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
-            if result.returncode != 0:
-                print(f"  FAILED (exit code {result.returncode})")
-                print(result.stderr[-500:] if result.stderr else "no stderr")
-                failed.append((config, seed))
-            else:
-                lines = result.stdout.strip().split("\n")
-                for line in lines[-4:]:
-                    print(f"  {line.strip()}")
+        if result.returncode != 0:
+            failed.append((config, seed))
+            pbar.set_postfix_str(f"FAILED: {config} seed={seed}")
 
     elapsed = time.time() - start
-    print("\n" + "=" * 60)
-    print(f"Done: {done - len(failed)}/{total} succeeded in {elapsed:.0f}s")
+    print(f"\nDone: {total - len(failed)}/{total} succeeded in {elapsed:.0f}s")
     if failed:
         print(f"Failed ({len(failed)}):")
         for config, seed in failed:
