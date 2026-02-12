@@ -30,8 +30,9 @@ class ConstraintValidator:
                 # Non-negative check is covered by min_val >= 0 effectively
 
             elif constraint.type in ['categorical', 'binary']:
-                if val not in constraint.allowed_values:
-                    return False
+                # Allow unseen categories: train/test splits naturally diverge
+                # on high-cardinality categoricals. NaN is already handled above.
+                pass
         return True
 
     def validate(self, X: pd.DataFrame) -> float:

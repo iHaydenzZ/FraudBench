@@ -130,7 +130,23 @@ def main():
 
     print("\n[5] Evaluating Model (Clean)...")
     from evaluation.metrics import compute_metrics
-    y_probs_clean = model.predict_proba(X_test_processed)
+
+    # Setup Input Validation Defence early so it applies to BOTH clean and robust eval
+    input_validator = None
+    if defence_config.get('type') == 'input_validation':
+        print("    Configuring Input Validation Defence...")
+        from defences.input_validation import InputValidator
+        iv_params = defence_config.get('params', {})
+        input_validator = InputValidator(
+            processed_schema,
+            mode=iv_params.get('mode', 'sanitise'),
+            z_threshold=iv_params.get('z_threshold', 3.0),
+        )
+        input_validator.fit(X_train_processed)
+
+    # Apply input validation to clean test data too (fair comparison)
+    X_test_eval = input_validator.transform(X_test_processed) if input_validator else X_test_processed
+    y_probs_clean = model.predict_proba(X_test_eval)
     metrics = compute_metrics(y_test, y_probs_clean)
     
     print("    Test Metrics:")
@@ -150,19 +166,6 @@ def main():
 
 
     print("\n[7] Running Attack...")
-
-    # Setup Input Validation Defence if enabled
-    input_validator = None
-    if defence_config.get('type') == 'input_validation':
-        print("    Configuring Input Validation Defence...")
-        from defences.input_validation import InputValidator
-        iv_params = defence_config.get('params', {})
-        input_validator = InputValidator(
-            processed_schema,
-            mode=iv_params.get('mode', 'sanitise'),
-            z_threshold=iv_params.get('z_threshold', 3.0),
-        )
-        input_validator.fit(X_train_processed)
 
     attack_config = config.get('attack', {})
     attack_type = attack_config.get('type', 'none')
