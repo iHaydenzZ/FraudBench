@@ -15,9 +15,9 @@
 **Command:**
 ```bash
 # Run all IEEE-CIS configs × 3 seeds
-uv run python -m runner.run --config configs/ieee_cis_baseline.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_baseline.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_baseline.yaml --seed 456
+uv run python -m runner.run --config configs/ieee_cis.yaml --seed 42
+uv run python -m runner.run --config configs/ieee_cis.yaml --seed 123
+uv run python -m runner.run --config configs/ieee_cis.yaml --seed 456
 uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 42
 uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 123
 uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 456
