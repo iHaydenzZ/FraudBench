@@ -34,6 +34,11 @@ class ConstraintSchema:
             ftype = feature_types.get(col, 'numeric')
             has_missing = X[col].isna().any()
 
+            # Override declared type if actual data is non-numeric
+            # (handles dtype mismatches across environments, e.g. Colab vs local)
+            if ftype == 'numeric' and not pd.api.types.is_numeric_dtype(X[col]):
+                ftype = 'categorical'
+
             if ftype == 'numeric':
                 # Handle NaN by using nanmin/nanmax
                 col_data = X[col].dropna()
