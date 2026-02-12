@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from tqdm import tqdm
 
@@ -54,28 +55,38 @@ CONFIGS = [
     "configs/sparkov_eps_sweep.yaml",
 ]
 
+MAX_WORKERS = 8
+
 
 def _short_name(config_path):
     """configs/ccfd_tree_hsj.yaml -> ccfd_tree_hsj"""
     return os.path.splitext(os.path.basename(config_path))[0]
 
 
+def _run_one(config, seed):
+    """Run a single experiment subprocess. Returns (config, seed, returncode)."""
+    cmd = [sys.executable, "-m", "runner.run", "--config", config, "--seed", str(seed)]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return config, seed, result.returncode
+
+
 def main():
-    total = len(CONFIGS) * len(SEEDS)
+    experiments = [(config, seed) for config in CONFIGS for seed in SEEDS]
+    total = len(experiments)
     failed = []
     start = time.time()
 
-    experiments = [(config, seed) for config in CONFIGS for seed in SEEDS]
-    pbar = tqdm(experiments, desc="All", unit="exp", dynamic_ncols=True)
-
-    for config, seed in pbar:
-        pbar.set_postfix_str(f"{_short_name(config)} s{seed}")
-
-        cmd = [sys.executable, "-m", "runner.run", "--config", config, "--seed", str(seed)]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            failed.append((config, seed))
+    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(_run_one, config, seed): (config, seed)
+            for config, seed in experiments
+        }
+        pbar = tqdm(as_completed(futures), total=total, desc="All", unit="exp", dynamic_ncols=True)
+        for future in pbar:
+            config, seed, rc = future.result()
+            pbar.set_postfix_str(f"{_short_name(config)} s{seed}")
+            if rc != 0:
+                failed.append((config, seed))
 
     elapsed = time.time() - start
     print(f"\nDone: {total - len(failed)}/{total} succeeded in {elapsed:.0f}s")
