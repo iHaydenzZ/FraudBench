@@ -1,0 +1,23 @@
+# requirements-colab.txt
+# Flat dependency file for Google Colab (which does not have uv).
+# Usage: pip install -r requirements-colab.txt
+
+# Core ML
+scikit-learn>=1.8.0
+xgboost>=3.1.2
+# torch is pre-installed on Colab — only uncomment if missing:
+# torch>=2.0
+
+# Adversarial Robustness
+adversarial-robustness-toolbox>=1.18.0
+
+# Data
+pandas>=2.3.3
+numpy>=2.4.0
+
+# Config
+pyyaml>=6.0.3
+
+# Evaluation / Plotting
+matplotlib>=3.9.0
+seaborn>=0.13.0

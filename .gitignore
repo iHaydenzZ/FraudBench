@@ -22,5 +22,16 @@ datasets/ieee-fraud-detection/
 datasets/LCLD/
 datasets/Sparkov/
 
+# Colab checkpoints
+.ipynb_checkpoints/
+
+# Model weights
+*.pt
+*.pth
+*.pkl
+
+# OS
+.DS_Store
+
 # AI-generated files
 .claude/

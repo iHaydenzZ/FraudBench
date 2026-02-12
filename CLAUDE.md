@@ -108,3 +108,30 @@ Tests use pytest with `tmp_path` fixtures for isolation. Some dataset tests use 
 ## Caching
 
 Split indices and preprocessor artifacts are cached in `results/`. Cache keys include dataset name, seed, and sample count — cache auto-invalidates if the dataset size changes.
+
+## Colab Integration
+
+### Development Workflow
+
+1. **Local development**: Write and debug code locally using `uv run` and `uv run pytest`.
+2. **Push to GitHub**: `git add . && git commit -m "..." && git push`
+3. **Run on Colab**: Open `notebooks/colab_runner.ipynb`, pull latest code, run experiments.
+4. **Results on Drive**: All experiment outputs are saved to Google Drive automatically.
+
+### Important Notes
+
+- Colab does NOT have `uv`. Use `pip install -e .` instead.
+- The runner command is the same on both local and Colab:
+  - Local:  `uv run python -m runner.run --config configs/mvp.yaml`
+  - Colab:  `python -m runner.run --config configs/mvp.yaml`
+- Datasets live on Google Drive at `/content/drive/MyDrive/FraudBench/data/`
+- Individual dataset dirs are symlinked into `datasets/` (not the whole folder, since it contains Python source).
+
+### Compute Unit Budget
+
+Approximate Colab burn rates:
+- T4 GPU: ~1.96 units/hour
+- A100 GPU: ~12.46 units/hour
+- CPU: Free (no unit consumption)
+
+**Always use T4 unless A100 is specifically needed.** Debug on CPU runtime.
