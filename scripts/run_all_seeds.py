@@ -1,4 +1,5 @@
 """Run the full experiment matrix across 3 seeds."""
+import os
 import subprocess
 import sys
 import time
@@ -53,23 +54,28 @@ CONFIGS = [
     "configs/sparkov_eps_sweep.yaml",
 ]
 
+
+def _short_name(config_path):
+    """configs/ccfd_tree_hsj.yaml -> ccfd_tree_hsj"""
+    return os.path.splitext(os.path.basename(config_path))[0]
+
+
 def main():
     total = len(CONFIGS) * len(SEEDS)
     failed = []
     start = time.time()
 
     experiments = [(config, seed) for config in CONFIGS for seed in SEEDS]
-    pbar = tqdm(experiments, desc="All experiments", unit="exp")
+    pbar = tqdm(experiments, desc="All", unit="exp", dynamic_ncols=True)
 
     for config, seed in pbar:
-        pbar.set_postfix_str(f"{config} seed={seed}")
+        pbar.set_postfix_str(f"{_short_name(config)} s{seed}")
 
         cmd = [sys.executable, "-m", "runner.run", "--config", config, "--seed", str(seed)]
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             failed.append((config, seed))
-            pbar.set_postfix_str(f"FAILED: {config} seed={seed}")
 
     elapsed = time.time() - start
     print(f"\nDone: {total - len(failed)}/{total} succeeded in {elapsed:.0f}s")
