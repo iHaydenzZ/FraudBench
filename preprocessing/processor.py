@@ -18,8 +18,16 @@ class DataPreprocessor:
         self.feature_names_out = None
 
     def fit(self, X: pd.DataFrame):
-        numeric_features = [f for f, t in self.feature_types.items() if t == 'numeric']
-        categorical_features = [f for f, t in self.feature_types.items() if t in ['categorical', 'binary']]
+        # Detect types from actual data to handle dtype mismatches across environments
+        numeric_features = []
+        categorical_features = []
+        for col in X.columns:
+            declared = self.feature_types.get(col)
+            actual_numeric = pd.api.types.is_numeric_dtype(X[col])
+            if declared in ('categorical', 'binary') or (not actual_numeric):
+                categorical_features.append(col)
+            else:
+                numeric_features.append(col)
 
         numeric_transformer = Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='median')),
