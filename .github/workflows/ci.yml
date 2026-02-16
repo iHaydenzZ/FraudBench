@@ -41,7 +41,7 @@ jobs:
 
       - name: Install CPU-only PyTorch then sync remaining deps
         run: |
-          uv venv
+          uv venv --clear
           uv pip install torch --index-url https://download.pytorch.org/whl/cpu
           uv sync
 
