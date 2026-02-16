@@ -1,36 +1,15 @@
 # FraudBench: To-Do List
 
-> **Last updated:** 2026-02-12
-> **Estimated remaining work:** P0+P1 ~10-14h, All ~16-24h
+> **Last updated:** 2026-02-16
+> **Estimated remaining work:** P1 ~6-10h, All ~12-20h
 
 ---
 
 ## P0 -- Must Fix (Affects Result Credibility)
 
-### 1. Re-run IEEE-CIS Experiments (15 experiments)
+### ~~1. Re-run IEEE-CIS Experiments~~ -- DONE
 
-The NaN validator bug is fixed in code, but the registry still contains old results with `validity_rate = 0.0000`. Must re-run all 15 IEEE-CIS experiments to get correct validity rates.
-
-```bash
-# All IEEE-CIS configs x 3 seeds (or use batch runner)
-uv run python -m runner.run --config configs/ieee_cis.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_adv_train.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_input_val.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_input_val.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_input_val.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_tree.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_tree.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_tree.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_tree_input_val.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_tree_input_val.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_tree_input_val.yaml --seed 456
-```
-
-**Verify:** IEEE-CIS rows have `validity_rate >= 0.95`.
+Re-run completed on Feb 12-16. New IEEE-CIS rows show `validity_rate ~0.997`. Old rows (Feb 9-10, 15 rows with `validity_rate = 0.0000`) remain in registry but are superseded. Exclude old rows when computing final results.
 
 ---
 
@@ -84,22 +63,9 @@ uv run python -m runner.run --config configs/sparkov_tree_square.yaml --seed 456
 
 ---
 
-### 4. Epsilon Sweeps -- Multi-Seed (12 experiments, 6 epsilon each)
+### ~~4. Epsilon Sweeps -- Multi-Seed~~ -- DONE
 
-Single-seed sweeps exist (seed 42). Need seeds 123 and 456 for all 4 datasets.
-
-```bash
-uv run python -m runner.run --config configs/ccfd_eps_sweep.yaml --seed 123
-uv run python -m runner.run --config configs/ccfd_eps_sweep.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_eps_sweep.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_eps_sweep.yaml --seed 456
-uv run python -m runner.run --config configs/lcld_eps_sweep.yaml --seed 123
-uv run python -m runner.run --config configs/lcld_eps_sweep.yaml --seed 456
-uv run python -m runner.run --config configs/sparkov_eps_sweep.yaml --seed 123
-uv run python -m runner.run --config configs/sparkov_eps_sweep.yaml --seed 456
-```
-
-**Verify:** Registry has multi-epsilon results with 3 seeds each.
+All 4 datasets have 3-seed epsilon sweeps (eps = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3}) completed on Feb 16. Seed 42 has duplicate runs from Feb 12 and Feb 16 — deduplicate when computing final results.
 
 ---
 
@@ -204,21 +170,21 @@ uv run python scripts/analyse_input_validation.py
 
 ## Summary
 
-| # | Task | Type | Experiments | Priority |
-|---|------|------|-------------|----------|
-| 1 | Re-run IEEE-CIS (NaN fix) | GPU | 15 | P0 |
-| 2 | Document input validation finding | Writing | -- | P0 |
-| 3 | Black-box attacks (HSJ + Square) | GPU | 24 | P1 |
-| 4 | Epsilon sweeps multi-seed | GPU | 8 (x6 eps) | P1 |
-| 5 | Reproducibility docs | Writing | -- | P1 |
-| 6 | Document tree+adv_train gap | Writing | -- | P1 |
-| 7 | Generate figures | Local | -- | P1 |
-| 8 | Transferability experiments | GPU | 4 | P2 |
-| 9 | Statistical tests | Local | -- | P2 |
-| 10 | Ensemble defence | Code+GPU | TBD | P2 |
-| 11 | CTGAN augmentation | Code+GPU | TBD | P2 |
-| 12 | Model zoo | GPU | -- | P2 |
+| # | Task | Type | Experiments | Priority | Status |
+|---|------|------|-------------|----------|--------|
+| 1 | ~~Re-run IEEE-CIS (NaN fix)~~ | GPU | 15 | P0 | **Done** |
+| 2 | Document input validation finding | Writing | -- | P0 | Pending |
+| 3 | Black-box attacks (HSJ + Square) | GPU | 24 | P1 | Pending |
+| 4 | ~~Epsilon sweeps multi-seed~~ | GPU | 8 (x6 eps) | P1 | **Done** |
+| 5 | Reproducibility docs | Writing | -- | P1 | Pending |
+| 6 | Document tree+adv_train gap | Writing | -- | P1 | Pending |
+| 7 | Generate figures | Local | -- | P1 | Pending |
+| 8 | Transferability experiments | GPU | 4 | P2 | Pending |
+| 9 | Statistical tests | Local | -- | P2 | Pending |
+| 10 | Ensemble defence | Code+GPU | TBD | P2 | Pending |
+| 11 | CTGAN augmentation | Code+GPU | TBD | P2 | Pending |
+| 12 | Model zoo | GPU | -- | P2 | Pending |
 
-**Total GPU experiments remaining:** ~47 (P0+P1) or ~51 (all)
+**Total GPU experiments remaining:** 24 (P1: black-box) or ~28 (all including transferability)
 
 **Recommended:** Run `uv run python scripts/run_all_seeds.py` on Colab (T4 GPU) for batch execution.

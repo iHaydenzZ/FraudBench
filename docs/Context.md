@@ -1,6 +1,6 @@
 # FraudBench: Project Context
 
-> **Last updated:** 2026-02-12
+> **Last updated:** 2026-02-16
 
 ---
 
@@ -19,7 +19,7 @@ FraudBench (FRBS — Fraud-Robust Benchmark Suite) evaluates adversarial robustn
 | Tier 3 (target) | Tier 2 + black-box attacks | Pending |
 | Tier 4 (stretch) | Tier 3 + Ensemble + CTGAN + Transferability | Not started |
 
-**Current position:** ~Tier 2 with bugs. 4 datasets covered, but IEEE-CIS has a validity_rate bug and black-box attacks haven't been run.
+**Current position:** Tier 2 complete. 4 datasets covered with 3-seed CAPGD + epsilon sweeps. IEEE-CIS validity_rate bug fixed and re-run. Black-box attacks (HSJ + Square) not yet run.
 
 ---
 
@@ -99,9 +99,10 @@ FraudBench/
 ├── results/          # registry.csv + cached artifacts
 ├── runner/           # CLI entrypoint
 ├── scripts/          # Batch runner, figure generation, analysis
-├── tests/            # Pytest suite (64 tests)
+├── tests/            # Pytest suite (77 tests)
 ├── notebooks/        # Colab runner + debug notebooks
-└── docs/             # This file + ToDo.md
+├── docs/             # This file + ToDo.md
+└── .github/          # CI/CD (GitHub Actions: ruff + pytest)
 ```
 
 ---
@@ -110,12 +111,13 @@ FraudBench/
 
 ### Registry Statistics
 
-- **Total rows:** ~101 (includes re-runs and epsilon sweeps)
-- **Datasets:** CCFD, IEEE-CIS, LCLD, Sparkov (4)
-- **Models:** Neural MLP, XGBoost (2)
+- **Total rows:** 235 (includes re-runs and epsilon sweeps; some duplicates from multi-date runs)
+- **Date range:** 2026-02-09 to 2026-02-16
+- **Datasets:** CCFD (74), IEEE-CIS (53), LCLD (51), Sparkov (57)
+- **Models:** Neural MLP (185), XGBoost (50)
 - **Attacks executed:** CAPGD only (HopSkipJump + Square code ready, not run)
-- **Defences:** none, adversarial_training, input_validation (3)
-- **Seeds:** 42, 123, 456
+- **Defences:** none (155), adversarial_training (28), input_validation (52)
+- **Seeds:** 42 (104), 123 (66), 456 (65)
 - **Unique configs executed:** 20/24 (83%) -- 4 tree+adv_train are N/A (gradients required)
 
 ### Coverage Matrix (CAPGD, 3 seeds each)
@@ -133,9 +135,9 @@ FraudBench/
 
 \* XGBoost + adversarial training is architecturally incompatible (requires gradients). This is itself a finding.
 
-### Epsilon Sweeps (seed 42 only)
+### Epsilon Sweeps (3 seeds)
 
-Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for: CCFD, IEEE-CIS, LCLD, Sparkov (all Neural, no defence).
+Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for all 4 datasets (Neural, no defence) with seeds 42, 123, and 456. Seed 42 has duplicate runs from Feb 12 and Feb 16.
 
 ---
 
@@ -143,19 +145,18 @@ Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for: CCFD, IEEE-
 
 ### Positive Results
 
-1. **CAPGD effectively degrades Neural models** across all datasets:
-   - CCFD: -18.5% robust PR-AUC
-   - IEEE-CIS: -82.7%
-   - LCLD: -65.4%
-   - Sparkov: -99.1%
+1. **CAPGD effectively degrades Neural models** across all datasets (3-seed avg, eps=0.1, no defence):
 
-2. **Adversarial training significantly improves robustness** for Neural models:
-   - CCFD: +7% (robust PR-AUC improvement over baseline)
-   - IEEE-CIS: +254%
-   - LCLD: +184%
-   - Sparkov: +3742% (from near-zero)
+   | Dataset | Clean PR-AUC | Robust PR-AUC | Drop |
+   |---------|-------------|---------------|------|
+   | CCFD | 0.717 | 0.582 | -18.8% |
+   | IEEE-CIS | 0.446 | 0.070 | -84.3% |
+   | LCLD | 0.306 | 0.105 | -65.7% |
+   | Sparkov | 0.604 | 0.005 | -99.1% |
 
-3. **XGBoost is immune to gradient-based CAPGD** (expected -- tree models lack gradients). Clean = Robust for all tree experiments.
+2. **Adversarial training significantly improves robustness** for Neural models (reduces PR-AUC drop under attack).
+
+3. **XGBoost is immune to gradient-based CAPGD** (expected -- tree models lack gradients). Clean = Robust for all tree experiments (CCFD: 0.851, IEEE-CIS: 0.568, LCLD: 0.368, Sparkov: 0.747).
 
 ### Negative Results / Issues
 
@@ -167,11 +168,11 @@ Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for: CCFD, IEEE-
 
 ## 5. Known Bugs
 
-### P0: IEEE-CIS validity_rate = 0.0000
+### Resolved: IEEE-CIS validity_rate = 0.0000
 
-All IEEE-CIS experiment rows report `validity_rate = 0.0000`. Root cause: `constraints/validator.py` fails on NaN categorical values (NaN != NaN so `NaN not in allowed_values` is always True). The `has_missing` flag exists but is never checked during validation.
+Root cause: `constraints/validator.py` failed on NaN categorical values (NaN != NaN so `NaN not in allowed_values` was always True). The `has_missing` flag existed but was never checked during validation.
 
-**Status:** Code fix applied. Old results with `validity_rate = 0` still in registry -- experiments need re-running.
+**Status:** Fixed and re-run. Feb 12+ IEEE-CIS rows show `validity_rate ~0.997`. Old rows from Feb 9-10 (15 rows with `validity_rate = 0.0000`) remain in the registry but are superseded by the re-runs. These should be excluded when computing final results.
 
 ### Addressed: Input Validation Performance
 
@@ -205,7 +206,18 @@ Investigated and determined to be a genuine finding (not a bug). Input validatio
 
 ---
 
-## 7. Progress Report Phase Alignment
+## 7. CI/CD
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to master and PRs targeting master:
+
+- **lint** job: `ruff check .` + `ruff format --check .` (~30s)
+- **test** job: CPU-only torch, `uv sync`, `pytest -m "not slow"` (~3-5min)
+
+Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
+
+---
+
+## 8. Progress Report Phase Alignment
 
 | Phase | Weeks | Content | Status |
 |-------|-------|---------|--------|
@@ -213,5 +225,5 @@ Investigated and determined to be a genuine finding (not a bug). Input validatio
 | Phase 2: Model Building | Wk 3-4 | XGBoost + Neural MLP baselines | Done |
 | Phase 3: Attack Implementation | Wk 5-6 | CAPGD + black-box attacks | Partial (CAPGD only, black-box code ready) |
 | Phase 4: Defence Integration | Wk 7-9 | 4 defence methods | Partial (2/4: adv training + input validation) |
-| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Partial (results exist, no auto reports) |
+| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Partial (CAPGD matrix complete, 3-seed eps sweeps done, no black-box or transferability) |
 | Phase 6: Analysis & Reporting | Wk 13 | Final report + visualizations | Not started |
