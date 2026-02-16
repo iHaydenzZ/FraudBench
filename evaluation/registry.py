@@ -1,6 +1,7 @@
 import csv
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Dict, Any
 
 class ExperimentRegistry:
@@ -52,7 +53,7 @@ class ExperimentRegistry:
             metrics_robust = {}
 
         row = [
-            datetime.now().isoformat(),
+            datetime.now(ZoneInfo("Australia/Sydney")).isoformat(),
             config.get('experiment_name', 'n/a'),
             config.get('seed', 42),
             config['dataset']['name'],
