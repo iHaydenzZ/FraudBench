@@ -1,4 +1,5 @@
 """Square Attack (score-based) black-box attack wrapper via ART."""
+
 import math
 import pandas as pd
 import numpy as np
@@ -49,7 +50,7 @@ class _SquareARTWrapper(BlackBoxClassifierNeuralNetwork):
         )
 
     def _predict_fn(self, x: np.ndarray) -> np.ndarray:
-        x_flat = x.reshape(x.shape[0], -1)[:, :self._n_features]
+        x_flat = x.reshape(x.shape[0], -1)[:, : self._n_features]
         df = pd.DataFrame(x_flat, columns=self._feature_names)
         probs = self._frbs_model.predict_proba(df)
         return np.column_stack([1 - probs, probs]).astype(np.float32)
@@ -80,7 +81,8 @@ def square_attack(
     art_model = _SquareARTWrapper(
         model,
         n_features=n_features,
-        h=h, w=w,
+        h=h,
+        w=w,
         feature_names=feature_names,
         clip_values=(clip_min, clip_max),
     )

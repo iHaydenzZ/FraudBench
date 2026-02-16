@@ -1,10 +1,19 @@
 import torch
-import torch.nn as nn
 
 
-def adversarial_train_step(model, X_batch, y_batch, criterion, optimizer, device,
-                           epsilon=0.1, alpha=0.5, schema=None, feature_names=None,
-                           feature_types=None):
+def adversarial_train_step(
+    model,
+    X_batch,
+    y_batch,
+    criterion,
+    optimizer,
+    device,
+    epsilon=0.1,
+    alpha=0.5,
+    schema=None,
+    feature_names=None,
+    feature_types=None,
+):
     """
     Performs one training step with mixed clean and adversarial data.
     Uses constraint projection when schema is provided.

@@ -1,10 +1,9 @@
 import pandas as pd
-import numpy as np
 from constraints.schema import ConstraintSchema
 
 
 class InputValidator:
-    def __init__(self, schema: ConstraintSchema, mode: str = 'sanitise', z_threshold: float = 3.0):
+    def __init__(self, schema: ConstraintSchema, mode: str = "sanitise", z_threshold: float = 3.0):
         """
         Args:
             schema: Feature constraint schema for bound clipping.
@@ -21,7 +20,7 @@ class InputValidator:
     def fit(self, X: pd.DataFrame, y=None):
         """Compute per-feature mean/std for outlier detection."""
         for col, constraint in self.schema.features.items():
-            if col not in X.columns or constraint.type != 'numeric':
+            if col not in X.columns or constraint.type != "numeric":
                 continue
             self._means[col] = X[col].mean()
             self._stds[col] = X[col].std()
@@ -42,10 +41,10 @@ class InputValidator:
             if col not in X_clean.columns:
                 continue
 
-            if constraint.type == 'numeric':
+            if constraint.type == "numeric":
                 # 1. Bound clipping (always)
-                min_v = constraint.min_val if constraint.min_val is not None else -float('inf')
-                max_v = constraint.max_val if constraint.max_val is not None else float('inf')
+                min_v = constraint.min_val if constraint.min_val is not None else -float("inf")
+                max_v = constraint.max_val if constraint.max_val is not None else float("inf")
                 X_clean[col] = X_clean[col].clip(lower=min_v, upper=max_v)
 
                 # 2. Outlier detection (only if fitted)
@@ -55,20 +54,20 @@ class InputValidator:
                     lower_bound = mean - self.z_threshold * std
                     upper_bound = mean + self.z_threshold * std
 
-                    if self.mode == 'sanitise':
+                    if self.mode == "sanitise":
                         X_clean[col] = X_clean[col].clip(lower=lower_bound, upper=upper_bound)
-                    elif self.mode == 'reject':
+                    elif self.mode == "reject":
                         outlier_mask = (X_clean[col] < lower_bound) | (X_clean[col] > upper_bound)
                         rejected_mask = rejected_mask | outlier_mask
 
-        if self.mode == 'reject' and rejected_mask.any():
+        if self.mode == "reject" and rejected_mask.any():
             n_rejected = rejected_mask.sum()
 
         if return_metadata:
             metadata = {
-                'n_rejected': int(n_rejected),
-                'total': len(X),
-                'rejection_rate': n_rejected / len(X) if len(X) > 0 else 0.0,
+                "n_rejected": int(n_rejected),
+                "total": len(X),
+                "rejection_rate": n_rejected / len(X) if len(X) > 0 else 0.0,
             }
             return X_clean, metadata
 

@@ -8,11 +8,11 @@ Usage:
     uv run python -m scripts.transferability --dataset ccfd --seed 42 --epsilon 0.1
     uv run python -m scripts.transferability --dataset ieee_cis --attack-type hopskipjump
 """
+
 import argparse
 import os
 import time
 
-import numpy as np
 import pandas as pd
 
 # Attack-model compatibility: CAPGD requires a differentiable (neural) source.
@@ -24,12 +24,15 @@ def _run_attack(attack_type, model, X, y, schema, feature_types, params):
     """Dispatch to the appropriate attack implementation."""
     if attack_type == "capgd":
         from attacks.capgd import capgd_attack
+
         return capgd_attack(model, X, y, schema, feature_types, params)
     elif attack_type == "hopskipjump":
         from attacks.hopskipjump import hopskipjump_attack
+
         return hopskipjump_attack(model, X, y, schema, feature_types, params)
     elif attack_type == "square":
         from attacks.square import square_attack
+
         return square_attack(model, X, y, schema, feature_types, params)
     else:
         raise ValueError(f"Unknown attack type: {attack_type}")
@@ -61,7 +64,10 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
     # ------------------------------------------------------------------
     print(f"\n[2] Splitting dataset (seed={seed})...")
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
-        dataset, test_size=0.2, val_size=0.2, random_state=seed,
+        dataset,
+        test_size=0.2,
+        val_size=0.2,
+        random_state=seed,
     )
     print(f"    Train: {X_train.shape[0]}, Val: {X_val.shape[0]}, Test: {X_test.shape[0]}")
 
@@ -83,7 +89,7 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
         X_train_proc = preprocessor.fit_transform(X_train)
         preprocessor.save(preprocessor_path)
 
-    X_val_proc = preprocessor.transform(X_val)
+    _X_val_proc = preprocessor.transform(X_val)
     X_test_proc = preprocessor.transform(X_test)
     print(f"    Processed feature count: {X_train_proc.shape[1]}")
 
@@ -143,15 +149,20 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
     # ------------------------------------------------------------------
     for src_name in source_names:
         src_model = models[src_name]
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  Source model: {src_name} | Attack: {attack_type} | eps={epsilon}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         print(f"    Generating adversarial examples on {src_name}...")
         t0 = time.time()
         X_adv = _run_attack(
-            attack_type, src_model, X_test_proc, y_test,
-            schema, processed_feature_types, attack_params,
+            attack_type,
+            src_model,
+            X_test_proc,
+            y_test,
+            schema,
+            processed_feature_types,
+            attack_params,
         )
         attack_time = time.time() - t0
         print(f"    Attack complete ({attack_time:.1f}s)")
@@ -182,27 +193,29 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
 
             transfer_rate = tgt_drop / src_drop if abs(src_drop) > 1e-9 else float("nan")
 
-            results.append({
-                "dataset": dataset_name,
-                "seed": seed,
-                "attack_type": attack_type,
-                "epsilon": epsilon,
-                "source_model": src_name,
-                "target_model": tgt_name,
-                "is_transfer": is_transfer,
-                "source_clean_pr_auc": src_clean_pr,
-                "source_adv_pr_auc": src_adv_pr,
-                "source_pr_auc_drop": src_drop,
-                "target_clean_pr_auc": tgt_clean_pr,
-                "target_adv_pr_auc": adv_metrics["pr_auc"],
-                "target_pr_auc_drop": tgt_drop,
-                "transfer_rate": transfer_rate,
-                "target_clean_f1": clean_metrics[tgt_name]["f1"],
-                "target_adv_f1": adv_metrics["f1"],
-                "target_clean_recall": clean_metrics[tgt_name]["recall"],
-                "target_adv_recall": adv_metrics["recall"],
-                "attack_time_sec": attack_time,
-            })
+            results.append(
+                {
+                    "dataset": dataset_name,
+                    "seed": seed,
+                    "attack_type": attack_type,
+                    "epsilon": epsilon,
+                    "source_model": src_name,
+                    "target_model": tgt_name,
+                    "is_transfer": is_transfer,
+                    "source_clean_pr_auc": src_clean_pr,
+                    "source_adv_pr_auc": src_adv_pr,
+                    "source_pr_auc_drop": src_drop,
+                    "target_clean_pr_auc": tgt_clean_pr,
+                    "target_adv_pr_auc": adv_metrics["pr_auc"],
+                    "target_pr_auc_drop": tgt_drop,
+                    "transfer_rate": transfer_rate,
+                    "target_clean_f1": clean_metrics[tgt_name]["f1"],
+                    "target_adv_f1": adv_metrics["f1"],
+                    "target_clean_recall": clean_metrics[tgt_name]["recall"],
+                    "target_adv_recall": adv_metrics["recall"],
+                    "attack_time_sec": attack_time,
+                }
+            )
 
     # ------------------------------------------------------------------
     # 9. Summary table
@@ -213,9 +226,13 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
     print("=" * 70)
 
     summary_cols = [
-        "source_model", "target_model", "is_transfer",
-        "target_clean_pr_auc", "target_adv_pr_auc",
-        "target_pr_auc_drop", "transfer_rate",
+        "source_model",
+        "target_model",
+        "is_transfer",
+        "target_clean_pr_auc",
+        "target_adv_pr_auc",
+        "target_pr_auc_drop",
+        "transfer_rate",
     ]
     print(df[summary_cols].to_string(index=False, float_format="%.4f"))
 
@@ -235,34 +252,32 @@ def run_transferability(dataset_name, seed, epsilon, attack_type, sample_frac):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Cross-model adversarial transferability experiment"
-    )
+    parser = argparse.ArgumentParser(description="Cross-model adversarial transferability experiment")
     parser.add_argument(
-        "--dataset", default="ccfd",
+        "--dataset",
+        default="ccfd",
         choices=["ccfd", "ieee_cis", "lcld", "sparkov"],
         help="Dataset name (default: ccfd)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--epsilon", type=float, default=0.1, help="Attack epsilon (default: 0.1)")
     parser.add_argument(
-        "--epsilon", type=float, default=0.1, help="Attack epsilon (default: 0.1)"
-    )
-    parser.add_argument(
-        "--attack-type", default="capgd",
+        "--attack-type",
+        default="capgd",
         choices=["capgd", "hopskipjump", "square"],
-        help="Attack type (default: capgd). "
-             "Note: capgd requires neural source model.",
+        help="Attack type (default: capgd). Note: capgd requires neural source model.",
     )
     parser.add_argument(
-        "--sample-frac", type=float, default=0.1,
+        "--sample-frac",
+        type=float,
+        default=0.1,
         help="Fraction of dataset to use (default: 0.1)",
     )
     args = parser.parse_args()
 
     # Validate
     if args.attack_type in _NEURAL_ONLY_ATTACKS:
-        print(f"Note: {args.attack_type} is gradient-based; "
-              f"only neural model will be used as source.")
+        print(f"Note: {args.attack_type} is gradient-based; only neural model will be used as source.")
 
     run_transferability(
         dataset_name=args.dataset,

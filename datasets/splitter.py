@@ -18,7 +18,7 @@ def save_split_indices(
     test_idx: list,
     seed: int,
     n_samples: int,
-    output_dir: str = "results"
+    output_dir: str = "results",
 ):
     """Saves split indices to JSON for reproducibility."""
     os.makedirs(output_dir, exist_ok=True)
@@ -30,36 +30,31 @@ def save_split_indices(
         "n_samples": n_samples,
         "train_indices": train_idx,
         "val_indices": val_idx,
-        "test_indices": test_idx
+        "test_indices": test_idx,
     }
 
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         json.dump(data, f)
 
     print(f"    Split indices saved to {path}")
 
 
-def load_split_indices(
-    dataset_name: str,
-    seed: int,
-    n_samples: int,
-    output_dir: str = "results"
-) -> Optional[dict]:
+def load_split_indices(dataset_name: str, seed: int, n_samples: int, output_dir: str = "results") -> Optional[dict]:
     """Loads split indices from JSON if exists and matches current dataset size."""
     path = get_split_path(dataset_name, seed, n_samples, output_dir)
 
     if os.path.exists(path):
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             data = json.load(f)
 
         # Validate that cached indices match current dataset size
-        cached_n = data.get('n_samples', 0)
+        cached_n = data.get("n_samples", 0)
         if cached_n != n_samples:
             print(f"    Warning: Cached split has {cached_n} samples but dataset has {n_samples}. Regenerating.")
             return None
 
         # Validate indices are within bounds
-        all_indices = data['train_indices'] + data['val_indices'] + data['test_indices']
+        all_indices = data["train_indices"] + data["val_indices"] + data["test_indices"]
         if max(all_indices) >= n_samples:
             print(f"    Warning: Cached indices out of bounds for dataset size {n_samples}. Regenerating.")
             return None
@@ -75,7 +70,7 @@ def split_dataset(
     val_size: float = 0.2,
     random_state: int = 42,
     save_indices: bool = True,
-    output_dir: str = "results"
+    output_dir: str = "results",
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     """
     Splits dataset into Train, Validation, and Test.
@@ -90,7 +85,7 @@ def split_dataset(
     """
     X = dataset.X
     y = dataset.y
-    dataset_name = dataset.meta.get('name', 'unknown')
+    dataset_name = dataset.meta.get("name", "unknown")
     n_samples = len(X)
 
     # Try to load existing split indices (with size validation)
@@ -98,9 +93,9 @@ def split_dataset(
 
     if existing is not None:
         print(f"    Reusing existing split indices for {dataset_name} (n={n_samples}, seed={random_state})")
-        train_idx = existing['train_indices']
-        val_idx = existing['val_indices']
-        test_idx = existing['test_indices']
+        train_idx = existing["train_indices"]
+        val_idx = existing["val_indices"]
+        test_idx = existing["test_indices"]
 
         X_train = X.iloc[train_idx]
         X_val = X.iloc[val_idx]
@@ -113,9 +108,7 @@ def split_dataset(
 
     # Create new split
     # First split: Train+Val vs Test
-    X_temp, X_test, y_temp, y_test = train_test_split(
-        X, y, test_size=test_size, stratify=y, random_state=random_state
-    )
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=test_size, stratify=y, random_state=random_state)
 
     # Adjust val_size to be relative to temp size
     relative_val_size = val_size / (1 - test_size)
@@ -133,7 +126,7 @@ def split_dataset(
             X_test.index.tolist(),
             random_state,
             n_samples,
-            output_dir
+            output_dir,
         )
 
     return X_train, X_val, X_test, y_train, y_val, y_test

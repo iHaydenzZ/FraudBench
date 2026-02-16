@@ -7,6 +7,7 @@ Usage:
 Creates a clean directory structure that can be uploaded to Google Drive
 at MyDrive/FraudBench/data/.
 """
+
 import argparse
 import os
 import shutil
@@ -66,9 +67,7 @@ def main():
             if not os.path.exists(os.path.join(dst_dir, ef)):
                 print(f"  MISS  {dataset_name}/{ef} — expected but not found")
 
-    print(
-        f"\nDone. Upload '{args.output_dir}/' to Google Drive > MyDrive > FraudBench > data"
-    )
+    print(f"\nDone. Upload '{args.output_dir}/' to Google Drive > MyDrive > FraudBench > data")
 
 
 if __name__ == "__main__":

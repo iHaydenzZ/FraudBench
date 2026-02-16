@@ -1,19 +1,33 @@
 """Generate thesis-ready figures from the experiment registry."""
+
 import argparse
 import os
 import pandas as pd
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 
 NUMERIC_COLS = [
-    "seed", "attack_epsilon", "validity_rate", "adv_validity_rate",
-    "clean_pr_auc", "clean_precision", "clean_recall", "clean_f1",
-    "robust_pr_auc", "robust_precision", "robust_recall", "robust_f1",
-    "clean_accuracy", "robust_accuracy", "train_time_sec", "attack_time_sec",
+    "seed",
+    "attack_epsilon",
+    "validity_rate",
+    "adv_validity_rate",
+    "clean_pr_auc",
+    "clean_precision",
+    "clean_recall",
+    "clean_f1",
+    "robust_pr_auc",
+    "robust_precision",
+    "robust_recall",
+    "robust_f1",
+    "clean_accuracy",
+    "robust_accuracy",
+    "train_time_sec",
+    "attack_time_sec",
 ]
 
 
@@ -30,9 +44,18 @@ def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate multi-seed runs: compute mean and std per experiment config."""
     group_cols = ["dataset", "model_type", "defence_type", "attack_type", "attack_epsilon"]
     metric_cols = [
-        "clean_pr_auc", "clean_precision", "clean_recall", "clean_f1",
-        "robust_pr_auc", "robust_precision", "robust_recall", "robust_f1",
-        "clean_accuracy", "robust_accuracy", "train_time_sec", "attack_time_sec",
+        "clean_pr_auc",
+        "clean_precision",
+        "clean_recall",
+        "clean_f1",
+        "robust_pr_auc",
+        "robust_precision",
+        "robust_recall",
+        "robust_f1",
+        "clean_accuracy",
+        "robust_accuracy",
+        "train_time_sec",
+        "attack_time_sec",
     ]
     # Only include columns that exist
     existing_metrics = [c for c in metric_cols if c in df.columns]
@@ -69,10 +92,22 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
 
         x = np.arange(len(sub))
         width = 0.35
-        ax.bar(x - width / 2, sub["clean_pr_auc_mean"], width, label="Clean PR-AUC",
-               yerr=sub.get("clean_pr_auc_std", 0), capsize=3)
-        ax.bar(x + width / 2, sub["robust_pr_auc_mean"], width, label="Robust PR-AUC",
-               yerr=sub.get("robust_pr_auc_std", 0), capsize=3)
+        ax.bar(
+            x - width / 2,
+            sub["clean_pr_auc_mean"],
+            width,
+            label="Clean PR-AUC",
+            yerr=sub.get("clean_pr_auc_std", 0),
+            capsize=3,
+        )
+        ax.bar(
+            x + width / 2,
+            sub["robust_pr_auc_mean"],
+            width,
+            label="Robust PR-AUC",
+            yerr=sub.get("robust_pr_auc_std", 0),
+            capsize=3,
+        )
         ax.set_ylabel("PR-AUC")
         ax.set_title(dataset.upper())
         ax.set_xticks(x)
@@ -103,10 +138,7 @@ def plot_attack_comparison(df: pd.DataFrame, output_dir: str):
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(
-        data=agg, x="attack_type", y="robust_pr_auc_mean",
-        hue="model_type", ax=ax, capsize=0.05
-    )
+    sns.barplot(data=agg, x="attack_type", y="robust_pr_auc_mean", hue="model_type", ax=ax, capsize=0.05)
     ax.set_ylabel("Robust PR-AUC (mean across seeds)")
     ax.set_xlabel("Attack Type")
     ax.set_title("Attack Comparison: Robust PR-AUC by Attack and Model Type")
@@ -146,7 +178,7 @@ def plot_summary_table(df: pd.DataFrame, output_dir: str):
     summary_df = pd.DataFrame(rows)
     csv_path = os.path.join(output_dir, "summary_table.csv")
     summary_df.to_csv(csv_path, index=False)
-    print(f"  Saved summary_table.csv")
+    print("  Saved summary_table.csv")
 
     # Render as PNG table
     fig, ax = plt.subplots(figsize=(max(14, len(summary_df.columns) * 2), max(4, len(summary_df) * 0.4 + 1)))
@@ -191,9 +223,7 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
         print("  Skipping defence_heatmap: no defence experiments found.")
         return
 
-    pivot = defended.pivot_table(
-        values="delta", index=["dataset", "attack_type"], columns="defence_type"
-    )
+    pivot = defended.pivot_table(values="delta", index=["dataset", "attack_type"], columns="defence_type")
 
     fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.5 + 1)))
     sns.heatmap(pivot, annot=True, fmt=".4f", cmap="RdYlGn", center=0, ax=ax)
@@ -214,10 +244,7 @@ def plot_training_time(df: pd.DataFrame, output_dir: str):
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(
-        data=agg, x="model_type", y="train_time_sec_mean",
-        hue="defence_type", ax=ax, capsize=0.05
-    )
+    sns.barplot(data=agg, x="model_type", y="train_time_sec_mean", hue="defence_type", ax=ax, capsize=0.05)
     ax.set_ylabel("Training Time (seconds, mean)")
     ax.set_xlabel("Model Type")
     ax.set_title("Training Time by Model and Defence")
@@ -271,8 +298,12 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
             d = sub[sub["defence_type"] == defence].sort_values("attack_epsilon")
             yerr = d["robust_pr_auc_std"].fillna(0)
             ax.errorbar(
-                d["attack_epsilon"], d["robust_pr_auc_mean"],
-                yerr=yerr, marker="o", capsize=3, label=defence,
+                d["attack_epsilon"],
+                d["robust_pr_auc_mean"],
+                yerr=yerr,
+                marker="o",
+                capsize=3,
+                label=defence,
             )
 
         ax.set_xlabel("Epsilon")
@@ -306,8 +337,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate thesis-ready figures from registry")
     parser.add_argument("--registry", default="results/registry.csv", help="Path to registry CSV")
     parser.add_argument("--output", default="results/figures", help="Output directory for figures")
-    parser.add_argument("--figures", default=None,
-                        help="Comma-separated figure names to generate (default: all)")
+    parser.add_argument("--figures", default=None, help="Comma-separated figure names to generate (default: all)")
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)

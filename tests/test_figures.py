@@ -1,8 +1,8 @@
 """Tests for figure generation utilities."""
+
 import pytest
 import pandas as pd
 import numpy as np
-import os
 
 
 class TestLoadRegistry:
@@ -55,15 +55,17 @@ class TestAggregateSeeds:
     def test_mean_and_std(self):
         from scripts.generate_figures import aggregate_seeds
 
-        df = pd.DataFrame({
-            "dataset": ["ccfd"] * 3,
-            "model_type": ["neural"] * 3,
-            "defence_type": ["none"] * 3,
-            "attack_type": ["capgd"] * 3,
-            "attack_epsilon": [0.1] * 3,
-            "clean_pr_auc": [0.80, 0.85, 0.90],
-            "robust_pr_auc": [0.60, 0.65, 0.70],
-        })
+        df = pd.DataFrame(
+            {
+                "dataset": ["ccfd"] * 3,
+                "model_type": ["neural"] * 3,
+                "defence_type": ["none"] * 3,
+                "attack_type": ["capgd"] * 3,
+                "attack_epsilon": [0.1] * 3,
+                "clean_pr_auc": [0.80, 0.85, 0.90],
+                "robust_pr_auc": [0.60, 0.65, 0.70],
+            }
+        )
 
         agg = aggregate_seeds(df)
         assert len(agg) == 1
@@ -75,15 +77,17 @@ class TestAggregateSeeds:
     def test_groups_correctly(self):
         from scripts.generate_figures import aggregate_seeds
 
-        df = pd.DataFrame({
-            "dataset": ["ccfd", "ccfd", "ieee_cis", "ieee_cis"],
-            "model_type": ["neural"] * 4,
-            "defence_type": ["none"] * 4,
-            "attack_type": ["capgd"] * 4,
-            "attack_epsilon": [0.1] * 4,
-            "clean_pr_auc": [0.80, 0.90, 0.70, 0.75],
-            "robust_pr_auc": [0.60, 0.65, 0.50, 0.55],
-        })
+        df = pd.DataFrame(
+            {
+                "dataset": ["ccfd", "ccfd", "ieee_cis", "ieee_cis"],
+                "model_type": ["neural"] * 4,
+                "defence_type": ["none"] * 4,
+                "attack_type": ["capgd"] * 4,
+                "attack_epsilon": [0.1] * 4,
+                "clean_pr_auc": [0.80, 0.90, 0.70, 0.75],
+                "robust_pr_auc": [0.60, 0.65, 0.50, 0.55],
+            }
+        )
 
         agg = aggregate_seeds(df)
         assert len(agg) == 2  # Two dataset groups
@@ -92,25 +96,34 @@ class TestAggregateSeeds:
 class TestStatisticalTests:
     """Tests for pairwise defence statistical comparisons."""
 
-    def _make_registry(self, seeds=(42, 123, 456), robust_none=(0.60, 0.65, 0.70),
-                       robust_adv=(0.80, 0.82, 0.84), robust_iv=(0.55, 0.58, 0.53)):
+    def _make_registry(
+        self,
+        seeds=(42, 123, 456),
+        robust_none=(0.60, 0.65, 0.70),
+        robust_adv=(0.80, 0.82, 0.84),
+        robust_iv=(0.55, 0.58, 0.53),
+    ):
         """Build a minimal registry DataFrame for testing."""
         rows = []
-        for defence, values in [("none", robust_none),
-                                ("adversarial_training", robust_adv),
-                                ("input_validation", robust_iv)]:
+        for defence, values in [
+            ("none", robust_none),
+            ("adversarial_training", robust_adv),
+            ("input_validation", robust_iv),
+        ]:
             for seed, val in zip(seeds, values):
-                rows.append({
-                    "timestamp": "2025-01-01T00:00:00",
-                    "experiment_name": "test",
-                    "seed": seed,
-                    "dataset": "ccfd",
-                    "model_type": "neural",
-                    "defence_type": defence,
-                    "attack_type": "capgd",
-                    "attack_epsilon": 0.1,
-                    "robust_pr_auc": val,
-                })
+                rows.append(
+                    {
+                        "timestamp": "2025-01-01T00:00:00",
+                        "experiment_name": "test",
+                        "seed": seed,
+                        "dataset": "ccfd",
+                        "model_type": "neural",
+                        "defence_type": defence,
+                        "attack_type": "capgd",
+                        "attack_epsilon": 0.1,
+                        "robust_pr_auc": val,
+                    }
+                )
         return pd.DataFrame(rows)
 
     def test_pairwise_comparison_significant(self):
@@ -126,10 +139,7 @@ class TestStatisticalTests:
         assert len(results) == 3  # three pairwise comparisons
 
         # none vs adversarial_training should be significant (large gap)
-        row_na = results[
-            (results["defence_a"] == "none")
-            & (results["defence_b"] == "adversarial_training")
-        ].iloc[0]
+        row_na = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
         assert row_na["significant"] == True  # noqa: E712
         assert row_na["p_value"] < 0.05
         assert row_na["mean_diff"] < 0  # none < adv_training
@@ -170,20 +180,23 @@ class TestStatisticalTests:
 
         # Only 'none' and 'input_validation', no 'adversarial_training'
         rows = []
-        for defence, values in [("none", (0.60, 0.65, 0.70)),
-                                ("input_validation", (0.55, 0.58, 0.53))]:
+        for defence, values in [("none", (0.60, 0.65, 0.70)), ("input_validation", (0.55, 0.58, 0.53))]:
             for seed, val in zip((42, 123, 456), values):
-                rows.append({
-                    "seed": seed, "dataset": "ccfd", "model_type": "tree",
-                    "defence_type": defence, "robust_pr_auc": val,
-                })
+                rows.append(
+                    {
+                        "seed": seed,
+                        "dataset": "ccfd",
+                        "model_type": "tree",
+                        "defence_type": defence,
+                        "robust_pr_auc": val,
+                    }
+                )
         df = pd.DataFrame(rows)
         results = pairwise_defence_tests(df)
 
         # Comparisons involving adversarial_training should be skipped
         at_rows = results[
-            (results["defence_a"] == "adversarial_training")
-            | (results["defence_b"] == "adversarial_training")
+            (results["defence_a"] == "adversarial_training") | (results["defence_b"] == "adversarial_training")
         ]
         for _, row in at_rows.iterrows():
             assert "insufficient" in row["note"]

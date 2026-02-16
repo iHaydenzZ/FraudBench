@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check .
+
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py3.11-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-py3.11-
+
+      - name: Install CPU-only PyTorch then sync remaining deps
+        run: |
+          uv venv
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv sync
+
+      - name: Run tests
+        run: uv run pytest tests/ -v -m "not slow"

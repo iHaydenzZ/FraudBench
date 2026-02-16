@@ -1,6 +1,6 @@
 from .schema import ConstraintSchema
 import pandas as pd
-import numpy as np
+
 
 class ConstraintValidator:
     def __init__(self, schema: ConstraintSchema):
@@ -22,14 +22,14 @@ class ConstraintValidator:
                 else:
                     return False  # NaN not expected
 
-            if constraint.type == 'numeric':
+            if constraint.type == "numeric":
                 if constraint.min_val is not None and val < constraint.min_val:
                     return False
                 if constraint.max_val is not None and val > constraint.max_val:
                     return False
                 # Non-negative check is covered by min_val >= 0 effectively
 
-            elif constraint.type in ['categorical', 'binary']:
+            elif constraint.type in ["categorical", "binary"]:
                 # Allow unseen categories: train/test splits naturally diverge
                 # on high-cardinality categoricals. NaN is already handled above.
                 pass
@@ -40,11 +40,11 @@ class ConstraintValidator:
         valid_count = 0
         total = len(X)
         if total == 0:
-             return 1.0
-             
+            return 1.0
+
         # iterate for now, verify vectorization later if slow
         for i in range(total):
             if self.validate_sample(X.iloc[i]):
                 valid_count += 1
-                
+
         return valid_count / total

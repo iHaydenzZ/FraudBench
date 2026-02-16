@@ -4,15 +4,18 @@ import sys
 import time
 from pathlib import Path
 
+
 def load_config(config_path):
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         return yaml.safe_load(f)
+
 
 def build_parser():
     parser = argparse.ArgumentParser(description="FRBS MVP Runner")
     parser.add_argument("--config", type=str, required=True, help="Path to the config file")
     parser.add_argument("--seed", type=int, default=None, help="Override config seed")
     return parser
+
 
 def main():
     parser = build_parser()
@@ -31,27 +34,27 @@ def main():
         config["seed"] = args.seed
 
     print("Config loaded successfully.")
-    
+
     # 1. Load Dataset
     print(f"\n[1] Loading dataset: {config['dataset']['name']}...")
     from datasets.loader import load_dataset
     from datasets.splitter import split_dataset
 
-    dataset_config = config['dataset'].copy()
-    dataset_name = dataset_config.pop('name')
+    dataset_config = config["dataset"].copy()
+    dataset_name = dataset_config.pop("name")
     dataset = load_dataset(dataset_name, config=dataset_config)
     print(f"    Loaded {len(dataset.X)} samples with {len(dataset.feature_names)} features.")
-    if 'fraud_rate' in dataset.meta:
-        print(f"    Fraud rate: {dataset.meta['fraud_rate']:.4f} ({dataset.meta['fraud_rate']*100:.2f}%)")
-    
+    if "fraud_rate" in dataset.meta:
+        print(f"    Fraud rate: {dataset.meta['fraud_rate']:.4f} ({dataset.meta['fraud_rate'] * 100:.2f}%)")
+
     # 2. Split Dataset
-    seed = config.get('seed', 42)
+    seed = config.get("seed", 42)
     print(f"[2] Splitting dataset (test_size={config['dataset'].get('test_size', 0.2)}, seed={seed})...")
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
         dataset,
-        test_size=config['dataset'].get('test_size', 0.2),
-        val_size=config['dataset'].get('val_size', 0.2),
-        random_state=seed
+        test_size=config["dataset"].get("test_size", 0.2),
+        val_size=config["dataset"].get("val_size", 0.2),
+        random_state=seed,
     )
     print(f"    Train: {X_train.shape[0]}, Val: {X_val.shape[0]}, Test: {X_test.shape[0]}")
 
@@ -60,12 +63,12 @@ def main():
     from preprocessing.processor import DataPreprocessor, get_preprocessor_path
     import os
 
-    dataset_name = dataset.meta.get('name', 'unknown')
+    dataset_name = dataset.meta.get("name", "unknown")
     n_samples = len(dataset.X)
     preprocessor_path = get_preprocessor_path(dataset_name, seed, n_samples)
 
     if os.path.exists(preprocessor_path):
-        print(f"    Loading existing preprocessor...")
+        print("    Loading existing preprocessor...")
         preprocessor = DataPreprocessor.load(preprocessor_path)
         X_train_processed = preprocessor.transform(X_train)
     else:
@@ -75,45 +78,48 @@ def main():
         preprocessor.save(preprocessor_path)
 
     print("    Transforming Val and Test sets...")
-    X_val_processed = preprocessor.transform(X_val)
+    _X_val_processed = preprocessor.transform(X_val)
     X_test_processed = preprocessor.transform(X_test)
 
     print(f"    Processed feature count: {X_train_processed.shape[1]}")
 
     # Build processed-space schema (used by both attacks and defences)
     from constraints.schema import ConstraintSchema
-    processed_feature_types = {c: 'numeric' for c in X_train_processed.columns}
+
+    processed_feature_types = {c: "numeric" for c in X_train_processed.columns}
     processed_schema = ConstraintSchema.from_data(X_train_processed, processed_feature_types)
     processed_feature_names = X_train_processed.columns.tolist()
 
     print("\n[4] Training Model...")
-    model_type = config['model']['type']
-    model_params = config['model'].get('params', {})
+    model_type = config["model"]["type"]
+    model_params = config["model"].get("params", {})
 
     # Check for Adversarial Training Defence
-    defence_config = config.get('defence', {})
-    if defence_config.get('type') == 'adversarial_training' and model_type == 'tree':
+    defence_config = config.get("defence", {})
+    if defence_config.get("type") == "adversarial_training" and model_type == "tree":
         raise ValueError(
             "Adversarial training is not supported for tree models. "
             "Use defence.type: 'input_validation' or 'none' instead."
         )
-    if defence_config.get('type') == 'adversarial_training':
+    if defence_config.get("type") == "adversarial_training":
         print("    Configuring Adversarial Training...")
-        model_params['adv_training'] = True
-        model_params['adv_epsilon'] = defence_config.get('params', {}).get('epsilon', 0.1)
-        model_params['adv_schema'] = processed_schema
-        model_params['adv_feature_names'] = processed_feature_names
-        model_params['adv_feature_types'] = processed_feature_types
-    
+        model_params["adv_training"] = True
+        model_params["adv_epsilon"] = defence_config.get("params", {}).get("epsilon", 0.1)
+        model_params["adv_schema"] = processed_schema
+        model_params["adv_feature_names"] = processed_feature_names
+        model_params["adv_feature_types"] = processed_feature_types
+
     if model_type == "tree":
         from models.tree import TreeModel
+
         model = TreeModel(model_params)
     elif model_type == "neural":
         from models.neural import NeuralModel
+
         model = NeuralModel(model_params)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
-        
+
     print(f"    Initializing {model_type} model with params: {model_params}")
     train_start = time.time()
     model.fit(X_train_processed, y_train)
@@ -133,14 +139,15 @@ def main():
 
     # Setup Input Validation Defence early so it applies to BOTH clean and robust eval
     input_validator = None
-    if defence_config.get('type') == 'input_validation':
+    if defence_config.get("type") == "input_validation":
         print("    Configuring Input Validation Defence...")
         from defences.input_validation import InputValidator
-        iv_params = defence_config.get('params', {})
+
+        iv_params = defence_config.get("params", {})
         input_validator = InputValidator(
             processed_schema,
-            mode=iv_params.get('mode', 'sanitise'),
-            z_threshold=iv_params.get('z_threshold', 3.0),
+            mode=iv_params.get("mode", "sanitise"),
+            z_threshold=iv_params.get("z_threshold", 3.0),
         )
         input_validator.fit(X_train_processed)
 
@@ -148,7 +155,7 @@ def main():
     X_test_eval = input_validator.transform(X_test_processed) if input_validator else X_test_processed
     y_probs_clean = model.predict_proba(X_test_eval)
     metrics = compute_metrics(y_test, y_probs_clean)
-    
+
     print("    Test Metrics:")
     for k, v in metrics.items():
         print(f"      {k}: {v:.4f}")
@@ -159,47 +166,50 @@ def main():
     print("    Inferring constraints from raw Train set...")
     schema = ConstraintSchema.from_data(X_train, dataset.feature_types)
     validator = ConstraintValidator(schema)
-    
+
     print("    Validating raw Test set (should be 1.0)...")
     validity_rate = validator.validate(X_test)
     print(f"    Validity Rate: {validity_rate:.4f}")
 
-
     print("\n[7] Running Attack...")
 
-    attack_config = config.get('attack', {})
-    attack_type = attack_config.get('type', 'none')
+    attack_config = config.get("attack", {})
+    attack_type = attack_config.get("type", "none")
 
     # Determine epsilon values to sweep
-    epsilon_values = attack_config.get('epsilon_values', None)
+    epsilon_values = attack_config.get("epsilon_values", None)
     if epsilon_values is None:
         # Backward compat: single epsilon
-        epsilon_values = [attack_config.get('epsilon', 0.1)]
+        epsilon_values = [attack_config.get("epsilon", 0.1)]
 
     from evaluation.registry import ExperimentRegistry
+
     registry = ExperimentRegistry()
 
     def _run_attack(atype, mdl, X, y, schema, ftypes, params):
         """Dispatch to the appropriate attack implementation."""
-        if atype == 'capgd':
+        if atype == "capgd":
             from attacks.capgd import capgd_attack
+
             return capgd_attack(mdl, X, y, schema, ftypes, params)
-        elif atype == 'hopskipjump':
+        elif atype == "hopskipjump":
             from attacks.hopskipjump import hopskipjump_attack
+
             return hopskipjump_attack(mdl, X, y, schema, ftypes, params)
-        elif atype == 'square':
+        elif atype == "square":
             from attacks.square import square_attack
+
             return square_attack(mdl, X, y, schema, ftypes, params)
         else:
             raise ValueError(f"Unknown attack type: {atype}")
 
-    if attack_type in ('capgd', 'hopskipjump', 'square'):
+    if attack_type in ("capgd", "hopskipjump", "square"):
         print(f"    Attack type: {attack_type}")
         for eps in epsilon_values:
             attack_time = None
             adv_validity_rate = None
 
-            iter_attack_config = {**attack_config, 'epsilon': eps}
+            iter_attack_config = {**attack_config, "epsilon": eps}
             print(f"\n    --- Epsilon = {eps} ---")
             print(f"    Generating adversarial examples (eps={eps})...")
 
@@ -211,7 +221,7 @@ def main():
                 y_test,
                 processed_schema,
                 processed_feature_types,
-                params=iter_attack_config
+                params=iter_attack_config,
             )
             attack_time = time.time() - attack_start
             print(f"    Attack complete. (Time: {attack_time:.2f}s)")
@@ -241,7 +251,7 @@ def main():
 
             # Log this epsilon's results
             print(f"\n[9] Logging Results (eps={eps})...")
-            iter_config = {**config, 'attack': iter_attack_config}
+            iter_config = {**config, "attack": iter_attack_config}
             registry.log_experiment(
                 iter_config,
                 metrics,
@@ -249,7 +259,7 @@ def main():
                 validity_rate,
                 adv_validity_rate=adv_validity_rate,
                 train_time_sec=train_time,
-                attack_time_sec=attack_time
+                attack_time_sec=attack_time,
             )
 
     else:
@@ -264,6 +274,7 @@ def main():
         )
 
     print("\nMVP Run Complete.")
+
 
 if __name__ == "__main__":
     main()

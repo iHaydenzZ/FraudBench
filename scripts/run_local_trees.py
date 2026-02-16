@@ -3,6 +3,7 @@
 Usage:
     uv run python scripts/run_local_trees.py
 """
+
 import os
 import subprocess
 import sys
@@ -58,10 +59,7 @@ def main():
     start = time.time()
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(_run_one, config, seed): (config, seed)
-            for config, seed in experiments
-        }
+        futures = {pool.submit(_run_one, config, seed): (config, seed) for config, seed in experiments}
         pbar = tqdm(as_completed(futures), total=total, desc="Trees", unit="exp", dynamic_ncols=True)
         for future in pbar:
             config, seed, rc = future.result()

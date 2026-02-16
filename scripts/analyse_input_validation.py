@@ -41,6 +41,7 @@ import sys
 import pandas as pd
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -49,10 +50,22 @@ import matplotlib.pyplot as plt
 # ---------------------------------------------------------------------------
 
 NUMERIC_COLS = [
-    "seed", "attack_epsilon", "validity_rate", "adv_validity_rate",
-    "clean_pr_auc", "clean_precision", "clean_recall", "clean_f1",
-    "robust_pr_auc", "robust_precision", "robust_recall", "robust_f1",
-    "clean_accuracy", "robust_accuracy", "train_time_sec", "attack_time_sec",
+    "seed",
+    "attack_epsilon",
+    "validity_rate",
+    "adv_validity_rate",
+    "clean_pr_auc",
+    "clean_precision",
+    "clean_recall",
+    "clean_f1",
+    "robust_pr_auc",
+    "robust_precision",
+    "robust_recall",
+    "robust_f1",
+    "clean_accuracy",
+    "robust_accuracy",
+    "train_time_sec",
+    "attack_time_sec",
 ]
 
 
@@ -69,9 +82,18 @@ def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate multi-seed runs: compute mean and std per experiment config."""
     group_cols = ["dataset", "model_type", "defence_type", "attack_type", "attack_epsilon"]
     metric_cols = [
-        "clean_pr_auc", "clean_precision", "clean_recall", "clean_f1",
-        "robust_pr_auc", "robust_precision", "robust_recall", "robust_f1",
-        "clean_accuracy", "robust_accuracy", "train_time_sec", "attack_time_sec",
+        "clean_pr_auc",
+        "clean_precision",
+        "clean_recall",
+        "clean_f1",
+        "robust_pr_auc",
+        "robust_precision",
+        "robust_recall",
+        "robust_f1",
+        "clean_accuracy",
+        "robust_accuracy",
+        "train_time_sec",
+        "attack_time_sec",
     ]
     existing_metrics = [c for c in metric_cols if c in df.columns]
     existing_groups = [c for c in group_cols if c in df.columns]
@@ -84,6 +106,7 @@ def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Analysis
 # ---------------------------------------------------------------------------
+
 
 def compute_degradation(agg: pd.DataFrame) -> pd.DataFrame:
     """Compare baseline (defence_type=none) vs input_validation per config.
@@ -101,12 +124,18 @@ def compute_degradation(agg: pd.DataFrame) -> pd.DataFrame:
         sys.exit(1)
 
     merged = input_val.merge(
-        baseline[merge_keys + [
-            "robust_pr_auc_mean", "robust_pr_auc_std",
-            "robust_f1_mean", "robust_f1_std",
-            "robust_recall_mean", "robust_recall_std",
-            "clean_pr_auc_mean",
-        ]],
+        baseline[
+            merge_keys
+            + [
+                "robust_pr_auc_mean",
+                "robust_pr_auc_std",
+                "robust_f1_mean",
+                "robust_f1_std",
+                "robust_recall_mean",
+                "robust_recall_std",
+                "clean_pr_auc_mean",
+            ]
+        ],
         on=merge_keys,
         suffixes=("_iv", "_base"),
     )
@@ -115,25 +144,36 @@ def compute_degradation(agg: pd.DataFrame) -> pd.DataFrame:
     merged["delta_robust_f1"] = merged["robust_f1_mean_iv"] - merged["robust_f1_mean_base"]
     merged["delta_robust_recall"] = merged["robust_recall_mean_iv"] - merged["robust_recall_mean_base"]
 
-    result = merged[merge_keys + [
-        "clean_pr_auc_mean_base", "clean_pr_auc_mean_iv",
-        "robust_pr_auc_mean_base", "robust_pr_auc_mean_iv",
-        "robust_f1_mean_base", "robust_f1_mean_iv",
-        "robust_recall_mean_base", "robust_recall_mean_iv",
-        "delta_robust_pr_auc", "delta_robust_f1", "delta_robust_recall",
-    ]].copy()
+    result = merged[
+        merge_keys
+        + [
+            "clean_pr_auc_mean_base",
+            "clean_pr_auc_mean_iv",
+            "robust_pr_auc_mean_base",
+            "robust_pr_auc_mean_iv",
+            "robust_f1_mean_base",
+            "robust_f1_mean_iv",
+            "robust_recall_mean_base",
+            "robust_recall_mean_iv",
+            "delta_robust_pr_auc",
+            "delta_robust_f1",
+            "delta_robust_recall",
+        ]
+    ].copy()
 
     # Friendly column names for the output CSV
-    result = result.rename(columns={
-        "clean_pr_auc_mean_base": "clean_prauc_baseline",
-        "clean_pr_auc_mean_iv": "clean_prauc_input_val",
-        "robust_pr_auc_mean_base": "robust_prauc_baseline",
-        "robust_pr_auc_mean_iv": "robust_prauc_input_val",
-        "robust_f1_mean_base": "robust_f1_baseline",
-        "robust_f1_mean_iv": "robust_f1_input_val",
-        "robust_recall_mean_base": "robust_recall_baseline",
-        "robust_recall_mean_iv": "robust_recall_input_val",
-    })
+    result = result.rename(
+        columns={
+            "clean_pr_auc_mean_base": "clean_prauc_baseline",
+            "clean_pr_auc_mean_iv": "clean_prauc_input_val",
+            "robust_pr_auc_mean_base": "robust_prauc_baseline",
+            "robust_pr_auc_mean_iv": "robust_prauc_input_val",
+            "robust_f1_mean_base": "robust_f1_baseline",
+            "robust_f1_mean_iv": "robust_f1_input_val",
+            "robust_recall_mean_base": "robust_recall_baseline",
+            "robust_recall_mean_iv": "robust_recall_input_val",
+        }
+    )
 
     return result
 
@@ -148,17 +188,25 @@ def print_summary(deg: pd.DataFrame) -> None:
     for _, row in deg.iterrows():
         label = f"{row['dataset'].upper()} / {row['model_type']} / {row['attack_type']}"
         print(f"  {label}")
-        print(f"    Clean PR-AUC:  baseline={row['clean_prauc_baseline']:.4f}  "
-              f"input_val={row['clean_prauc_input_val']:.4f}")
-        print(f"    Robust PR-AUC: baseline={row['robust_prauc_baseline']:.4f}  "
-              f"input_val={row['robust_prauc_input_val']:.4f}  "
-              f"delta={row['delta_robust_pr_auc']:+.4f}")
-        print(f"    Robust F1:     baseline={row['robust_f1_baseline']:.4f}  "
-              f"input_val={row['robust_f1_input_val']:.4f}  "
-              f"delta={row['delta_robust_f1']:+.4f}")
-        print(f"    Robust Recall: baseline={row['robust_recall_baseline']:.4f}  "
-              f"input_val={row['robust_recall_input_val']:.4f}  "
-              f"delta={row['delta_robust_recall']:+.4f}")
+        print(
+            f"    Clean PR-AUC:  baseline={row['clean_prauc_baseline']:.4f}  "
+            f"input_val={row['clean_prauc_input_val']:.4f}"
+        )
+        print(
+            f"    Robust PR-AUC: baseline={row['robust_prauc_baseline']:.4f}  "
+            f"input_val={row['robust_prauc_input_val']:.4f}  "
+            f"delta={row['delta_robust_pr_auc']:+.4f}"
+        )
+        print(
+            f"    Robust F1:     baseline={row['robust_f1_baseline']:.4f}  "
+            f"input_val={row['robust_f1_input_val']:.4f}  "
+            f"delta={row['delta_robust_f1']:+.4f}"
+        )
+        print(
+            f"    Robust Recall: baseline={row['robust_recall_baseline']:.4f}  "
+            f"input_val={row['robust_recall_input_val']:.4f}  "
+            f"delta={row['delta_robust_recall']:+.4f}"
+        )
         print()
 
     # Overall summary
@@ -167,15 +215,14 @@ def print_summary(deg: pd.DataFrame) -> None:
 
     print(f"{'-' * 80}")
     print("SUMMARY")
-    print(f"  All configs show degradation: "
-          f"{(deg['delta_robust_pr_auc'] < 0).all()}")
-    print(f"  Mean delta robust PR-AUC (neural): "
-          f"{neural['delta_robust_pr_auc'].mean():+.4f}")
-    print(f"  Mean delta robust PR-AUC (tree):   "
-          f"{tree['delta_robust_pr_auc'].mean():+.4f}")
-    print(f"  Worst case: {deg.loc[deg['delta_robust_pr_auc'].idxmin(), 'dataset'].upper()} / "
-          f"{deg.loc[deg['delta_robust_pr_auc'].idxmin(), 'model_type']} "
-          f"(delta={deg['delta_robust_pr_auc'].min():+.4f})")
+    print(f"  All configs show degradation: {(deg['delta_robust_pr_auc'] < 0).all()}")
+    print(f"  Mean delta robust PR-AUC (neural): {neural['delta_robust_pr_auc'].mean():+.4f}")
+    print(f"  Mean delta robust PR-AUC (tree):   {tree['delta_robust_pr_auc'].mean():+.4f}")
+    print(
+        f"  Worst case: {deg.loc[deg['delta_robust_pr_auc'].idxmin(), 'dataset'].upper()} / "
+        f"{deg.loc[deg['delta_robust_pr_auc'].idxmin(), 'model_type']} "
+        f"(delta={deg['delta_robust_pr_auc'].min():+.4f})"
+    )
     print(f"{sep}\n")
 
     print("ROOT CAUSES:")
@@ -208,14 +255,42 @@ def plot_comparison_chart(deg: pd.DataFrame, agg: pd.DataFrame, output_path: str
         clean_iv = sub_deg["clean_prauc_input_val"].values
         robust_iv = sub_deg["robust_prauc_input_val"].values
 
-        ax.bar(x - 1.5 * bar_w, clean_base, bar_w, label="Clean (baseline)",
-               color="#4c72b0", edgecolor="black", linewidth=0.5)
-        ax.bar(x - 0.5 * bar_w, robust_base, bar_w, label="Robust (baseline)",
-               color="#55a868", edgecolor="black", linewidth=0.5)
-        ax.bar(x + 0.5 * bar_w, clean_iv, bar_w, label="Clean (input_val)",
-               color="#8da0cb", edgecolor="black", linewidth=0.5)
-        ax.bar(x + 1.5 * bar_w, robust_iv, bar_w, label="Robust (input_val)",
-               color="#c44e52", edgecolor="black", linewidth=0.5)
+        ax.bar(
+            x - 1.5 * bar_w,
+            clean_base,
+            bar_w,
+            label="Clean (baseline)",
+            color="#4c72b0",
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        ax.bar(
+            x - 0.5 * bar_w,
+            robust_base,
+            bar_w,
+            label="Robust (baseline)",
+            color="#55a868",
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        ax.bar(
+            x + 0.5 * bar_w,
+            clean_iv,
+            bar_w,
+            label="Clean (input_val)",
+            color="#8da0cb",
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        ax.bar(
+            x + 1.5 * bar_w,
+            robust_iv,
+            bar_w,
+            label="Robust (input_val)",
+            color="#c44e52",
+            edgecolor="black",
+            linewidth=0.5,
+        )
 
         ax.set_xticks(x)
         ax.set_xticklabels(models, fontsize=9)
@@ -228,7 +303,8 @@ def plot_comparison_chart(deg: pd.DataFrame, agg: pd.DataFrame, output_path: str
 
     fig.suptitle(
         "Input Validation Degrades Robustness: Clean vs Robust PR-AUC",
-        fontsize=13, fontweight="bold",
+        fontsize=13,
+        fontweight="bold",
     )
     fig.tight_layout()
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -240,16 +316,17 @@ def plot_comparison_chart(deg: pd.DataFrame, agg: pd.DataFrame, output_path: str
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Analyse input-validation defence degradation in FraudBench."
-    )
+    parser = argparse.ArgumentParser(description="Analyse input-validation defence degradation in FraudBench.")
     parser.add_argument(
-        "--registry", default="results/registry.csv",
+        "--registry",
+        default="results/registry.csv",
         help="Path to the experiment registry CSV (default: results/registry.csv)",
     )
     parser.add_argument(
-        "--output", default="results/figures",
+        "--output",
+        default="results/figures",
         help="Output directory for analysis artefacts (default: results/figures)",
     )
     args = parser.parse_args()

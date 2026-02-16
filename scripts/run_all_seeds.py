@@ -5,6 +5,7 @@ Usage:
     uv run python scripts/run_all_seeds.py --cpu-only   # tree models only
     uv run python scripts/run_all_seeds.py --gpu-only   # neural models only
 """
+
 import argparse
 import os
 import subprocess
@@ -73,8 +74,9 @@ def main():
     parser = argparse.ArgumentParser(description="Batch experiment runner")
     parser.add_argument("--cpu-only", action="store_true", help="Run only CPU (tree) experiments")
     parser.add_argument("--gpu-only", action="store_true", help="Run only GPU (neural) experiments")
-    parser.add_argument("--workers", type=int, default=None,
-                        help="Max parallel workers (default: 2 for CPU, 4 for GPU)")
+    parser.add_argument(
+        "--workers", type=int, default=None, help="Max parallel workers (default: 2 for CPU, 4 for GPU)"
+    )
     args = parser.parse_args()
 
     if args.cpu_only:
@@ -99,10 +101,7 @@ def main():
     print(f"Running {total} experiments ({label}) with {max_workers} workers...")
 
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        futures = {
-            pool.submit(_run_one, config, seed): (config, seed)
-            for config, seed in experiments
-        }
+        futures = {pool.submit(_run_one, config, seed): (config, seed) for config, seed in experiments}
         pbar = tqdm(as_completed(futures), total=total, desc=label, unit="exp", dynamic_ncols=True)
         for future in pbar:
             config, seed, rc, stderr = future.result()

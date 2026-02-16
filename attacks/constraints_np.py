@@ -1,4 +1,5 @@
 """NumPy-based constraint projection for black-box attacks (ART compatibility)."""
+
 import numpy as np
 from typing import Dict, Tuple
 from constraints.schema import ConstraintSchema
@@ -33,9 +34,7 @@ def project_constraints_np(
     return x_proj
 
 
-def compute_clip_values(
-    schema: ConstraintSchema, feature_names: list
-) -> Tuple[np.ndarray, np.ndarray]:
+def compute_clip_values(schema: ConstraintSchema, feature_names: list) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute global (min, max) clip arrays for ART classifiers.
 

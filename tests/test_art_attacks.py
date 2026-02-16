@@ -1,4 +1,5 @@
 """Tests for ART-based black-box attacks."""
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -13,12 +14,8 @@ class TestProjectConstraintsNP:
     @pytest.fixture
     def simple_schema(self):
         schema = ConstraintSchema()
-        schema.features["feat_0"] = FeatureConstraint(
-            name="feat_0", type="numeric", min_val=0.0, max_val=1.0
-        )
-        schema.features["feat_1"] = FeatureConstraint(
-            name="feat_1", type="numeric", min_val=-1.0, max_val=1.0
-        )
+        schema.features["feat_0"] = FeatureConstraint(name="feat_0", type="numeric", min_val=0.0, max_val=1.0)
+        schema.features["feat_1"] = FeatureConstraint(name="feat_1", type="numeric", min_val=-1.0, max_val=1.0)
         return schema
 
     def test_clips_to_bounds(self, simple_schema):
@@ -30,9 +27,7 @@ class TestProjectConstraintsNP:
         x_adv = np.array([[1.5, 2.0], [-0.5, -2.0]], dtype=np.float32)
         x_orig = np.array([[0.5, 0.0], [0.5, 0.0]], dtype=np.float32)
 
-        x_proj = project_constraints_np(
-            x_adv, x_orig, simple_schema, feature_names, feature_types
-        )
+        x_proj = project_constraints_np(x_adv, x_orig, simple_schema, feature_names, feature_types)
 
         assert x_proj[0, 0] == pytest.approx(1.0)
         assert x_proj[0, 1] == pytest.approx(1.0)
@@ -48,9 +43,7 @@ class TestProjectConstraintsNP:
         x_adv = np.array([[0.5, 0.0], [0.8, -0.5]], dtype=np.float32)
         x_orig = x_adv.copy()
 
-        x_proj = project_constraints_np(
-            x_adv, x_orig, simple_schema, feature_names, feature_types
-        )
+        x_proj = project_constraints_np(x_adv, x_orig, simple_schema, feature_names, feature_types)
 
         np.testing.assert_array_almost_equal(x_proj, x_adv)
 
@@ -58,12 +51,8 @@ class TestProjectConstraintsNP:
         from attacks.constraints_np import project_constraints_np
 
         schema = ConstraintSchema()
-        schema.features["num_feat"] = FeatureConstraint(
-            name="num_feat", type="numeric", min_val=0.0, max_val=1.0
-        )
-        schema.features["cat_feat"] = FeatureConstraint(
-            name="cat_feat", type="categorical", allowed_values=[0, 1, 2]
-        )
+        schema.features["num_feat"] = FeatureConstraint(name="num_feat", type="numeric", min_val=0.0, max_val=1.0)
+        schema.features["cat_feat"] = FeatureConstraint(name="cat_feat", type="categorical", allowed_values=[0, 1, 2])
 
         feature_names = ["num_feat", "cat_feat"]
         feature_types = {"num_feat": "numeric", "cat_feat": "categorical"}
@@ -71,9 +60,7 @@ class TestProjectConstraintsNP:
         x_adv = np.array([[1.5, 0.7]], dtype=np.float32)
         x_orig = np.array([[0.5, 1.0]], dtype=np.float32)
 
-        x_proj = project_constraints_np(
-            x_adv, x_orig, schema, feature_names, feature_types
-        )
+        x_proj = project_constraints_np(x_adv, x_orig, schema, feature_names, feature_types)
 
         assert x_proj[0, 0] == pytest.approx(1.0)  # Clipped
         assert x_proj[0, 1] == pytest.approx(1.0)  # Reverted to original
@@ -84,12 +71,8 @@ class TestComputeClipValues:
         from attacks.constraints_np import compute_clip_values
 
         schema = ConstraintSchema()
-        schema.features["a"] = FeatureConstraint(
-            name="a", type="numeric", min_val=0.0, max_val=10.0
-        )
-        schema.features["b"] = FeatureConstraint(
-            name="b", type="numeric", min_val=-5.0, max_val=5.0
-        )
+        schema.features["a"] = FeatureConstraint(name="a", type="numeric", min_val=0.0, max_val=10.0)
+        schema.features["b"] = FeatureConstraint(name="b", type="numeric", min_val=-5.0, max_val=5.0)
 
         mins, maxs = compute_clip_values(schema, ["a", "b"])
 
@@ -178,10 +161,7 @@ class TestSquareAttackIntegration:
         feature_types = {f"feat_{i}": "numeric" for i in range(5)}
         schema = ConstraintSchema.from_data(X, feature_types)
 
-        X_adv = square_attack(
-            model, X, y, schema, feature_types,
-            params={"epsilon": 0.5, "max_iter": 5}
-        )
+        X_adv = square_attack(model, X, y, schema, feature_types, params={"epsilon": 0.5, "max_iter": 5})
 
         assert isinstance(X_adv, pd.DataFrame)
         assert X_adv.shape == X.shape
@@ -207,8 +187,7 @@ class TestHopSkipJumpIntegration:
         schema = ConstraintSchema.from_data(X, feature_types)
 
         X_adv = hopskipjump_attack(
-            model, X, y, schema, feature_types,
-            params={"max_iter": 2, "max_eval": 100, "init_eval": 10}
+            model, X, y, schema, feature_types, params={"max_iter": 2, "max_eval": 100, "init_eval": 10}
         )
 
         assert isinstance(X_adv, pd.DataFrame)

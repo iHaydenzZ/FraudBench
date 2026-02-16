@@ -5,6 +5,7 @@ import numpy as np
 import joblib
 import os
 
+
 class TreeModel(BaseModel):
     def __init__(self, params=None):
         super().__init__(params)
@@ -16,7 +17,7 @@ class TreeModel(BaseModel):
             "n_jobs": -1,
             "tree_method": "hist",
             "objective": "binary:logistic",
-            "eval_metric": "aucpr"
+            "eval_metric": "aucpr",
         }
         if params:
             self.xgb_params.update(params)
@@ -36,7 +37,7 @@ class TreeModel(BaseModel):
         joblib.dump({"model": self.model, "params": self.params}, path)
 
     @classmethod
-    def load(cls, path: str) -> 'TreeModel':
+    def load(cls, path: str) -> "TreeModel":
         """Load a TreeModel from a joblib checkpoint."""
         data = joblib.load(path)
         instance = cls(data.get("params", {}))

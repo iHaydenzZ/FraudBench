@@ -1,4 +1,5 @@
 """ART-compatible wrapper for BaseModel instances."""
+
 import numpy as np
 import pandas as pd
 from art.estimators.classification import BlackBoxClassifierNeuralNetwork
@@ -13,8 +14,7 @@ class ARTModelWrapper(BlackBoxClassifierNeuralNetwork):
     (N, 2) format ART expects, and handles numpy-to-DataFrame conversion.
     """
 
-    def __init__(self, model: BaseModel, input_shape: tuple,
-                 feature_names: list, clip_values: tuple = None):
+    def __init__(self, model: BaseModel, input_shape: tuple, feature_names: list, clip_values: tuple = None):
         self._frbs_model = model
         self._feature_names = feature_names
 

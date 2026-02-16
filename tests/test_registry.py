@@ -1,6 +1,6 @@
 """Tests for experiment registry."""
+
 import csv
-import os
 import pytest
 from evaluation.registry import ExperimentRegistry
 
@@ -17,7 +17,7 @@ class TestRegistrySchema:
 
     def test_registry_header_contains_seed(self, registry):
         """Seed column must exist in the registry header."""
-        with open(registry.registry_path, 'r') as f:
+        with open(registry.registry_path, "r") as f:
             reader = csv.reader(f)
             header = next(reader)
         assert "seed" in header
@@ -35,10 +35,17 @@ class TestRegistrySchema:
         metrics_clean = {"pr_auc": 0.8, "precision": 0.7, "recall": 0.6, "f1": 0.65, "accuracy": 0.9}
         metrics_robust = {"pr_auc": 0.5, "precision": 0.4, "recall": 0.3, "f1": 0.35, "accuracy": 0.7}
 
-        registry.log_experiment(config, metrics_clean, metrics_robust, validity_rate=1.0,
-                                adv_validity_rate=0.99, train_time_sec=10.0, attack_time_sec=1.0)
+        registry.log_experiment(
+            config,
+            metrics_clean,
+            metrics_robust,
+            validity_rate=1.0,
+            adv_validity_rate=0.99,
+            train_time_sec=10.0,
+            attack_time_sec=1.0,
+        )
 
-        with open(registry.registry_path, 'r') as f:
+        with open(registry.registry_path, "r") as f:
             reader = csv.DictReader(f)
             row = next(reader)
 
@@ -57,7 +64,7 @@ class TestRegistrySchema:
 
         registry.log_experiment(config, metrics_clean, None, validity_rate=1.0)
 
-        with open(registry.registry_path, 'r') as f:
+        with open(registry.registry_path, "r") as f:
             reader = csv.DictReader(f)
             row = next(reader)
 

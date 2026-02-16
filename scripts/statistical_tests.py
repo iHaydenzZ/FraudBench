@@ -1,4 +1,5 @@
 """Statistical significance tests for pairwise defence comparisons."""
+
 import argparse
 import os
 import pandas as pd
@@ -9,6 +10,7 @@ from scipy import stats
 def load_registry(path: str = "results/registry.csv") -> pd.DataFrame:
     """Load registry via generate_figures to avoid duplication."""
     from scripts.generate_figures import load_registry as _load
+
     return _load(path)
 
 
@@ -44,18 +46,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
 
     for (dataset, model_type), grp in df.groupby(["dataset", "model_type"]):
         for def_a, def_b in pairs:
-            vals_a = (
-                grp[grp["defence_type"] == def_a]
-                .sort_values("seed")["robust_pr_auc"]
-                .dropna()
-                .values
-            )
-            vals_b = (
-                grp[grp["defence_type"] == def_b]
-                .sort_values("seed")["robust_pr_auc"]
-                .dropna()
-                .values
-            )
+            vals_a = grp[grp["defence_type"] == def_a].sort_values("seed")["robust_pr_auc"].dropna().values
+            vals_b = grp[grp["defence_type"] == def_b].sort_values("seed")["robust_pr_auc"].dropna().values
 
             row = {
                 "dataset": dataset,
@@ -69,16 +61,18 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
             # Need at least 3 paired observations for a meaningful t-test
             n_paired = min(len(vals_a), len(vals_b))
             if n_paired < 3:
-                row.update({
-                    "mean_a": np.mean(vals_a) if len(vals_a) > 0 else np.nan,
-                    "mean_b": np.mean(vals_b) if len(vals_b) > 0 else np.nan,
-                    "mean_diff": np.nan,
-                    "t_statistic": np.nan,
-                    "p_value": np.nan,
-                    "cohens_d": np.nan,
-                    "significant": False,
-                    "note": f"insufficient paired data (n={n_paired})",
-                })
+                row.update(
+                    {
+                        "mean_a": np.mean(vals_a) if len(vals_a) > 0 else np.nan,
+                        "mean_b": np.mean(vals_b) if len(vals_b) > 0 else np.nan,
+                        "mean_diff": np.nan,
+                        "t_statistic": np.nan,
+                        "p_value": np.nan,
+                        "cohens_d": np.nan,
+                        "significant": False,
+                        "note": f"insufficient paired data (n={n_paired})",
+                    }
+                )
                 rows.append(row)
                 continue
 
@@ -90,32 +84,36 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
 
             # Check if values are identical (zero variance in differences)
             if np.allclose(a, b):
-                row.update({
-                    "mean_a": float(np.mean(a)),
-                    "mean_b": float(np.mean(b)),
-                    "mean_diff": mean_diff,
-                    "t_statistic": 0.0,
-                    "p_value": 1.0,
-                    "cohens_d": 0.0,
-                    "significant": False,
-                    "note": "identical values across seeds",
-                })
+                row.update(
+                    {
+                        "mean_a": float(np.mean(a)),
+                        "mean_b": float(np.mean(b)),
+                        "mean_diff": mean_diff,
+                        "t_statistic": 0.0,
+                        "p_value": 1.0,
+                        "cohens_d": 0.0,
+                        "significant": False,
+                        "note": "identical values across seeds",
+                    }
+                )
                 rows.append(row)
                 continue
 
             t_stat, p_val = stats.ttest_rel(a, b)
             d = compute_cohens_d(a, b)
 
-            row.update({
-                "mean_a": float(np.mean(a)),
-                "mean_b": float(np.mean(b)),
-                "mean_diff": mean_diff,
-                "t_statistic": float(t_stat),
-                "p_value": float(p_val),
-                "cohens_d": float(d),
-                "significant": bool(p_val < 0.05),
-                "note": "",
-            })
+            row.update(
+                {
+                    "mean_a": float(np.mean(a)),
+                    "mean_b": float(np.mean(b)),
+                    "mean_diff": mean_diff,
+                    "t_statistic": float(t_stat),
+                    "p_value": float(p_val),
+                    "cohens_d": float(d),
+                    "significant": bool(p_val < 0.05),
+                    "note": "",
+                }
+            )
             rows.append(row)
 
     return pd.DataFrame(rows)
@@ -153,9 +151,7 @@ def print_summary(results: pd.DataFrame) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Statistical significance tests for pairwise defence comparisons"
-    )
+    parser = argparse.ArgumentParser(description="Statistical significance tests for pairwise defence comparisons")
     parser.add_argument(
         "--registry",
         default="results/registry.csv",

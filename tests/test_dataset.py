@@ -1,4 +1,5 @@
 """Tests for dataset loading and splitting."""
+
 import pytest
 import pandas as pd
 import os
@@ -16,8 +17,7 @@ class TestDatasetLoader:
 
 
 @pytest.mark.skipif(
-    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "CCFD", "creditcard.csv")),
-    reason="CCFD dataset not available"
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "CCFD", "creditcard.csv")), reason="CCFD dataset not available"
 )
 class TestCCFDLoader:
     """Tests for CCFD dataset loader."""
@@ -50,7 +50,7 @@ class TestCCFDLoader:
 
 @pytest.mark.skipif(
     not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "ieee-fraud-detection", "train_transaction.csv")),
-    reason="IEEE-CIS dataset not available"
+    reason="IEEE-CIS dataset not available",
 )
 class TestIEEECISLoader:
     """Tests for IEEE-CIS dataset loader."""
@@ -80,8 +80,7 @@ class TestIEEECISLoader:
 
 
 @pytest.mark.skipif(
-    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "LCLD", "loan.csv")),
-    reason="LCLD dataset not available"
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "LCLD", "loan.csv")), reason="LCLD dataset not available"
 )
 class TestLCLDLoader:
     """Tests for LCLD dataset loader."""
@@ -124,7 +123,7 @@ class TestLCLDLoader:
 
 @pytest.mark.skipif(
     not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "Sparkov", "fraudTrain.csv")),
-    reason="Sparkov dataset not available"
+    reason="Sparkov dataset not available",
 )
 class TestSparkovLoader:
     """Tests for Sparkov dataset loader."""
@@ -165,8 +164,7 @@ class TestSparkovLoader:
 
 
 @pytest.mark.skipif(
-    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "CCFD", "creditcard.csv")),
-    reason="CCFD dataset not available"
+    not os.path.exists(os.path.join(DEFAULT_DATA_ROOT, "CCFD", "creditcard.csv")), reason="CCFD dataset not available"
 )
 class TestDatasetSplitter:
     """Tests for dataset splitting functionality."""
@@ -179,11 +177,7 @@ class TestDatasetSplitter:
     def test_split_sizes(self, dataset):
         """Test that splits have correct sizes."""
         X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
-            dataset,
-            test_size=0.2,
-            val_size=0.2,
-            random_state=42,
-            save_indices=False
+            dataset, test_size=0.2, val_size=0.2, random_state=42, save_indices=False
         )
 
         total = len(dataset.X)
@@ -194,11 +188,7 @@ class TestDatasetSplitter:
     def test_split_stratification(self, dataset):
         """Test that splits maintain class balance."""
         X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
-            dataset,
-            test_size=0.2,
-            val_size=0.2,
-            random_state=42,
-            save_indices=False
+            dataset, test_size=0.2, val_size=0.2, random_state=42, save_indices=False
         )
 
         # Check class ratios are similar
@@ -220,20 +210,10 @@ class TestDatasetSplitter:
     def test_split_save_load_isolation(self, dataset, tmp_path):
         """Test that split indices are saved and loaded correctly using isolated tmp_path."""
         # First split - should save
-        split1 = split_dataset(
-            dataset,
-            random_state=123,
-            save_indices=True,
-            output_dir=str(tmp_path)
-        )
+        split1 = split_dataset(dataset, random_state=123, save_indices=True, output_dir=str(tmp_path))
 
         # Second split - should load from cache
-        split2 = split_dataset(
-            dataset,
-            random_state=123,
-            save_indices=True,
-            output_dir=str(tmp_path)
-        )
+        split2 = split_dataset(dataset, random_state=123, save_indices=True, output_dir=str(tmp_path))
 
         pd.testing.assert_frame_equal(split1[0], split2[0])  # X_train
         pd.testing.assert_frame_equal(split1[2], split2[2])  # X_test
@@ -250,20 +230,10 @@ class TestDatasetSplitter:
         dataset_larger = load_dataset("ccfd", config={"sample_frac": 0.01})
 
         # Split small dataset
-        split_dataset(
-            dataset_small,
-            random_state=42,
-            save_indices=True,
-            output_dir=str(tmp_path)
-        )
+        split_dataset(dataset_small, random_state=42, save_indices=True, output_dir=str(tmp_path))
 
         # Split larger dataset with same seed - should create new file, not reuse
-        split_dataset(
-            dataset_larger,
-            random_state=42,
-            save_indices=True,
-            output_dir=str(tmp_path)
-        )
+        split_dataset(dataset_larger, random_state=42, save_indices=True, output_dir=str(tmp_path))
 
         # Both files should exist with different sizes in filename
         files = list(tmp_path.glob("split_indices_*.json"))

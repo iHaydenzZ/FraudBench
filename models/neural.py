@@ -7,6 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
 import os
 
+
 class SimpleMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim=64, use_sigmoid=True):
         super(SimpleMLP, self).__init__()
@@ -24,6 +25,7 @@ class SimpleMLP(nn.Module):
         if return_logits or not self.use_sigmoid:
             return logits
         return self.sigmoid(logits)
+
 
 class NeuralModel(BaseModel):
     def __init__(self, params=None):
@@ -56,16 +58,16 @@ class NeuralModel(BaseModel):
 
         self.model.train()
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        
+
         # Convert to tensor
         X_tensor = torch.tensor(X.values, dtype=torch.float32).to(self.device)
         y_tensor = torch.tensor(y.values, dtype=torch.float32).unsqueeze(1).to(self.device)
-        
+
         dataset = TensorDataset(X_tensor, y_tensor)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-        
+
         print(f"Training Neural Model on {self.device}...")
-        
+
         adv_training = self.params.get("adv_training", False)
         adv_epsilon = self.params.get("adv_epsilon", 0.1)
         adv_schema = self.params.get("adv_schema", None)
@@ -74,6 +76,7 @@ class NeuralModel(BaseModel):
 
         if adv_training:
             from defences.adversarial_training import adversarial_train_step
+
             print(f"  Enabled Adversarial Training (eps={adv_epsilon})")
 
         for epoch in range(self.epochs):
@@ -81,9 +84,16 @@ class NeuralModel(BaseModel):
             for X_batch, y_batch in loader:
                 if adv_training:
                     loss = adversarial_train_step(
-                        self.model, X_batch, y_batch, criterion, optimizer, self.device,
-                        epsilon=adv_epsilon, schema=adv_schema,
-                        feature_names=adv_feature_names, feature_types=adv_feature_types
+                        self.model,
+                        X_batch,
+                        y_batch,
+                        criterion,
+                        optimizer,
+                        self.device,
+                        epsilon=adv_epsilon,
+                        schema=adv_schema,
+                        feature_names=adv_feature_names,
+                        feature_types=adv_feature_types,
                     )
                     total_loss += loss
                 else:
@@ -93,10 +103,10 @@ class NeuralModel(BaseModel):
                     loss.backward()
                     optimizer.step()
                     total_loss += loss.item()
-            
+
             # optional: print epoch loss
             if (epoch + 1) % 5 == 0:
-                print(f"Epoch {epoch+1}/{self.epochs}, Loss: {total_loss/len(loader):.4f}")
+                print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {total_loss / len(loader):.4f}")
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         self.model.eval()
@@ -104,7 +114,7 @@ class NeuralModel(BaseModel):
         with torch.no_grad():
             outputs = self.model(X_tensor)
             # Apply sigmoid if model outputs logits
-            if hasattr(self, '_use_logits') and self._use_logits:
+            if hasattr(self, "_use_logits") and self._use_logits:
                 outputs = torch.sigmoid(outputs)
         return outputs.cpu().numpy().flatten()
 
@@ -118,24 +128,21 @@ class NeuralModel(BaseModel):
                 "use_sigmoid": self.model.use_sigmoid,
             },
             "params": self.params,
-            "_use_logits": getattr(self, '_use_logits', False),
+            "_use_logits": getattr(self, "_use_logits", False),
         }
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         torch.save(checkpoint, path)
 
     @classmethod
-    def load(cls, path: str) -> 'NeuralModel':
+    def load(cls, path: str) -> "NeuralModel":
         """Load a NeuralModel from a checkpoint file."""
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         checkpoint = torch.load(path, map_location=device, weights_only=False)
         # Filter out non-serialisable adv_* keys that cannot be stored in YAML
-        params = {k: v for k, v in checkpoint["params"].items()
-                  if not k.startswith("adv_")}
+        params = {k: v for k, v in checkpoint["params"].items() if not k.startswith("adv_")}
         instance = cls(params)
         cfg = checkpoint["config"]
-        instance.model = SimpleMLP(
-            cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]
-        ).to(instance.device)
+        instance.model = SimpleMLP(cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]).to(instance.device)
         instance.model.load_state_dict(checkpoint["state_dict"])
         instance._use_logits = checkpoint.get("_use_logits", False)
         instance.model.eval()

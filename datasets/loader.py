@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 import os
 import pandas as pd
-import numpy as np
 
 # Default path to external datasets (relative to project root)
 DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets")
@@ -58,15 +57,13 @@ def load_ccfd(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
             "name": "ccfd",
             "target_col": target_col,
             "fraud_rate": y.mean(),
-            "source": "Kaggle Credit Card Fraud Detection"
-        }
+            "source": "Kaggle Credit Card Fraud Detection",
+        },
     )
 
 
 def load_ieee_cis(
-    data_root: str = DEFAULT_DATA_ROOT,
-    sample_frac: float = None,
-    use_identity: bool = False
+    data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None, use_identity: bool = False
 ) -> DatasetObj:
     """
     Loads the IEEE-CIS Fraud Detection dataset.
@@ -127,8 +124,8 @@ def load_ieee_cis(
             "target_col": target_col,
             "fraud_rate": y.mean(),
             "source": "Kaggle IEEE-CIS Fraud Detection",
-            "use_identity": use_identity
-        }
+            "use_identity": use_identity,
+        },
     )
 
 
@@ -156,8 +153,7 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
     df = df[df["loan_status"] != "Current"].copy()
 
     # Binary target: default = 1
-    default_statuses = {"Charged Off", "Default",
-                        "Does not meet the credit policy. Status:Charged Off"}
+    default_statuses = {"Charged Off", "Default", "Does not meet the credit policy. Status:Charged Off"}
     df["target"] = df["loan_status"].isin(default_statuses).astype(int)
 
     # --- Column removal ---
@@ -166,19 +162,41 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
 
     # Post-origination leakage (known only after loan is issued)
     leakage_cols = [
-        "out_prncp", "out_prncp_inv", "total_pymnt", "total_pymnt_inv",
-        "total_rec_prncp", "total_rec_int", "total_rec_late_fee",
-        "recoveries", "collection_recovery_fee", "last_pymnt_d",
-        "last_pymnt_amnt", "next_pymnt_d", "last_credit_pull_d",
-        "hardship_flag", "hardship_type", "hardship_reason",
-        "hardship_status", "deferral_term", "hardship_amount",
-        "hardship_start_date", "hardship_end_date", "payment_plan_start_date",
-        "hardship_length", "hardship_dpd", "hardship_loan_status",
+        "out_prncp",
+        "out_prncp_inv",
+        "total_pymnt",
+        "total_pymnt_inv",
+        "total_rec_prncp",
+        "total_rec_int",
+        "total_rec_late_fee",
+        "recoveries",
+        "collection_recovery_fee",
+        "last_pymnt_d",
+        "last_pymnt_amnt",
+        "next_pymnt_d",
+        "last_credit_pull_d",
+        "hardship_flag",
+        "hardship_type",
+        "hardship_reason",
+        "hardship_status",
+        "deferral_term",
+        "hardship_amount",
+        "hardship_start_date",
+        "hardship_end_date",
+        "payment_plan_start_date",
+        "hardship_length",
+        "hardship_dpd",
+        "hardship_loan_status",
         "orig_projected_additional_accrued_interest",
-        "hardship_payoff_balance_amount", "hardship_last_payment_amount",
-        "debt_settlement_flag", "debt_settlement_flag_date",
-        "settlement_status", "settlement_date", "settlement_amount",
-        "settlement_percentage", "settlement_term",
+        "hardship_payoff_balance_amount",
+        "hardship_last_payment_amount",
+        "debt_settlement_flag",
+        "debt_settlement_flag_date",
+        "settlement_status",
+        "settlement_date",
+        "settlement_amount",
+        "settlement_percentage",
+        "settlement_term",
     ]
 
     # Dates (not directly usable without feature engineering)
@@ -190,10 +208,7 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
     # Near-constant columns
     constant_cols = ["pymnt_plan", "acc_now_delinq", "tax_liens"]
 
-    drop_cols = set(
-        id_cols + leakage_cols + date_cols + high_card_cols + constant_cols
-        + ["loan_status", "target"]
-    )
+    drop_cols = set(id_cols + leakage_cols + date_cols + high_card_cols + constant_cols + ["loan_status", "target"])
 
     # Also drop columns with >50% missing
     miss_rate = df.drop(columns=["target"], errors="ignore").isnull().mean()
@@ -226,12 +241,7 @@ def load_lcld(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) -> 
         y=y,
         feature_types=feature_types,
         feature_names=feature_cols,
-        meta={
-            "name": "lcld",
-            "target_col": "loan_status",
-            "fraud_rate": y.mean(),
-            "source": "Lending Club open data"
-        }
+        meta={"name": "lcld", "target_col": "loan_status", "fraud_rate": y.mean(), "source": "Lending Club open data"},
     )
 
 
@@ -274,16 +284,17 @@ def load_sparkov(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) 
 
     # Drop PII, high-cardinality, and non-predictive columns
     drop_cols = [
-        "Unnamed: 0",       # index column
+        "Unnamed: 0",  # index column
         "trans_date_trans_time",  # raw datetime string
-        "cc_num",            # credit card number (PII)
-        "first", "last",     # names (PII)
-        "street",            # address (PII)
-        "city",              # high-cardinality (~900 unique)
-        "dob",               # date of birth (PII)
-        "trans_num",         # transaction ID
-        "merchant",          # high-cardinality (~700 unique)
-        "job",               # high-cardinality (~500 unique)
+        "cc_num",  # credit card number (PII)
+        "first",
+        "last",  # names (PII)
+        "street",  # address (PII)
+        "city",  # high-cardinality (~900 unique)
+        "dob",  # date of birth (PII)
+        "trans_num",  # transaction ID
+        "merchant",  # high-cardinality (~700 unique)
+        "job",  # high-cardinality (~500 unique)
         target_col,
     ]
 
@@ -309,8 +320,8 @@ def load_sparkov(data_root: str = DEFAULT_DATA_ROOT, sample_frac: float = None) 
             "name": "sparkov",
             "target_col": target_col,
             "fraud_rate": y.mean(),
-            "source": "Sparkov Data Generation (Kaggle)"
-        }
+            "source": "Sparkov Data Generation (Kaggle)",
+        },
     )
 
 
@@ -340,11 +351,7 @@ def load_dataset(dataset_name: str, config: Optional[Dict] = None) -> DatasetObj
 
     elif dataset_name == "ieee_cis":
         use_identity = config.get("use_identity", False)
-        return load_ieee_cis(
-            data_root=data_root,
-            sample_frac=sample_frac,
-            use_identity=use_identity
-        )
+        return load_ieee_cis(data_root=data_root, sample_frac=sample_frac, use_identity=use_identity)
 
     elif dataset_name == "lcld":
         return load_lcld(data_root=data_root, sample_frac=sample_frac)
@@ -353,7 +360,4 @@ def load_dataset(dataset_name: str, config: Optional[Dict] = None) -> DatasetObj
         return load_sparkov(data_root=data_root, sample_frac=sample_frac)
 
     else:
-        raise ValueError(
-            f"Dataset '{dataset_name}' not implemented. "
-            f"Available: ccfd, ieee_cis, lcld, sparkov"
-        )
+        raise ValueError(f"Dataset '{dataset_name}' not implemented. Available: ccfd, ieee_cis, lcld, sparkov")

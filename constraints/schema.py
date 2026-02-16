@@ -31,15 +31,15 @@ class ConstraintSchema:
         """
         schema = cls()
         for col in X.columns:
-            ftype = feature_types.get(col, 'numeric')
+            ftype = feature_types.get(col, "numeric")
             has_missing = X[col].isna().any()
 
             # Override declared type if actual data is non-numeric
             # (handles dtype mismatches across environments, e.g. Colab vs local)
-            if ftype == 'numeric' and not pd.api.types.is_numeric_dtype(X[col]):
-                ftype = 'categorical'
+            if ftype == "numeric" and not pd.api.types.is_numeric_dtype(X[col]):
+                ftype = "categorical"
 
-            if ftype == 'numeric':
+            if ftype == "numeric":
                 # Handle NaN by using nanmin/nanmax
                 col_data = X[col].dropna()
 
@@ -63,14 +63,14 @@ class ConstraintSchema:
 
                 schema.features[col] = FeatureConstraint(
                     name=col,
-                    type='numeric',
+                    type="numeric",
                     min_val=min_v,
                     max_val=max_v,
                     is_non_negative=(min_v >= 0),
-                    has_missing=has_missing
+                    has_missing=has_missing,
                 )
 
-            elif ftype in ['categorical', 'binary']:
+            elif ftype in ["categorical", "binary"]:
                 # Get unique values, handling mixed types safely
                 unique_vals = X[col].unique()
 
@@ -89,10 +89,7 @@ class ConstraintSchema:
                     allowed = sorted(allowed, key=lambda x: str(x))
 
                 schema.features[col] = FeatureConstraint(
-                    name=col,
-                    type=ftype,
-                    allowed_values=allowed,
-                    has_missing=has_missing
+                    name=col, type=ftype, allowed_values=allowed, has_missing=has_missing
                 )
 
         return schema
