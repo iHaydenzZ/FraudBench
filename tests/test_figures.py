@@ -102,6 +102,7 @@ class TestStatisticalTests:
         robust_none=(0.60, 0.65, 0.70),
         robust_adv=(0.80, 0.82, 0.84),
         robust_iv=(0.55, 0.58, 0.53),
+        robust_ens=(0.75, 0.77, 0.79),
     ):
         """Build a minimal registry DataFrame for testing."""
         rows = []
@@ -109,6 +110,7 @@ class TestStatisticalTests:
             ("none", robust_none),
             ("adversarial_training", robust_adv),
             ("input_validation", robust_iv),
+            ("ensemble", robust_ens),
         ]:
             for seed, val in zip(seeds, values):
                 rows.append(
@@ -136,7 +138,7 @@ class TestStatisticalTests:
             robust_iv=(0.55, 0.58, 0.53),
         )
         results = pairwise_defence_tests(df)
-        assert len(results) == 3  # three pairwise comparisons
+        assert len(results) == 6  # six pairwise comparisons
 
         # none vs adversarial_training should be significant (large gap)
         row_na = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
@@ -153,6 +155,7 @@ class TestStatisticalTests:
             robust_none=(0.700, 0.701, 0.699),
             robust_adv=(0.701, 0.700, 0.700),
             robust_iv=(0.699, 0.700, 0.701),
+            robust_ens=(0.700, 0.701, 0.700),
         )
         results = pairwise_defence_tests(df)
         # No comparison should be significant for near-identical values
@@ -168,6 +171,7 @@ class TestStatisticalTests:
             robust_none=(0.80, 0.80, 0.80),
             robust_adv=(0.80, 0.80, 0.80),
             robust_iv=(0.80, 0.80, 0.80),
+            robust_ens=(0.80, 0.80, 0.80),
         )
         results = pairwise_defence_tests(df)
         for _, row in results.iterrows():
@@ -194,11 +198,12 @@ class TestStatisticalTests:
         df = pd.DataFrame(rows)
         results = pairwise_defence_tests(df)
 
-        # Comparisons involving adversarial_training should be skipped
-        at_rows = results[
-            (results["defence_a"] == "adversarial_training") | (results["defence_b"] == "adversarial_training")
+        # Comparisons involving adversarial_training or ensemble should be skipped
+        missing_rows = results[
+            (results["defence_a"].isin(["adversarial_training", "ensemble"]))
+            | (results["defence_b"].isin(["adversarial_training", "ensemble"]))
         ]
-        for _, row in at_rows.iterrows():
+        for _, row in missing_rows.iterrows():
             assert "insufficient" in row["note"]
 
     def test_cohens_d_computation(self):
@@ -229,3 +234,5 @@ class TestStatisticalTests:
         assert "p_value" in loaded.columns
         assert "cohens_d" in loaded.columns
         assert "significant" in loaded.columns
+        assert "w_statistic" in loaded.columns
+        assert "w_p_value" in loaded.columns

@@ -39,7 +39,10 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
     pairs = [
         ("none", "adversarial_training"),
         ("none", "input_validation"),
+        ("none", "ensemble"),
         ("adversarial_training", "input_validation"),
+        ("adversarial_training", "ensemble"),
+        ("input_validation", "ensemble"),
     ]
 
     rows = []
@@ -68,6 +71,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                         "mean_diff": np.nan,
                         "t_statistic": np.nan,
                         "p_value": np.nan,
+                        "w_statistic": np.nan,
+                        "w_p_value": np.nan,
                         "cohens_d": np.nan,
                         "significant": False,
                         "note": f"insufficient paired data (n={n_paired})",
@@ -91,6 +96,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                         "mean_diff": mean_diff,
                         "t_statistic": 0.0,
                         "p_value": 1.0,
+                        "w_statistic": np.nan,
+                        "w_p_value": np.nan,
                         "cohens_d": 0.0,
                         "significant": False,
                         "note": "identical values across seeds",
@@ -102,6 +109,12 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
             t_stat, p_val = stats.ttest_rel(a, b)
             d = compute_cohens_d(a, b)
 
+            # Wilcoxon signed-rank (requires n >= 6 for meaningful results)
+            if n_paired >= 6:
+                w_stat, w_pval = stats.wilcoxon(a, b)
+            else:
+                w_stat, w_pval = np.nan, np.nan
+
             row.update(
                 {
                     "mean_a": float(np.mean(a)),
@@ -109,6 +122,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                     "mean_diff": mean_diff,
                     "t_statistic": float(t_stat),
                     "p_value": float(p_val),
+                    "w_statistic": float(w_stat) if not np.isnan(w_stat) else np.nan,
+                    "w_p_value": float(w_pval) if not np.isnan(w_pval) else np.nan,
                     "cohens_d": float(d),
                     "significant": bool(p_val < 0.05),
                     "note": "",
