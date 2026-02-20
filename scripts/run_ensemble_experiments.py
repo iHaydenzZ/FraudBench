@@ -55,6 +55,9 @@ def main():
     parser.add_argument("--workers", type=int, default=None, help="Max parallel workers (default: 1)")
     args = parser.parse_args()
 
+    if args.cpu_only and args.gpu_only:
+        parser.error("--cpu-only and --gpu-only are mutually exclusive")
+
     if args.cpu_only:
         configs = CPU_CONFIGS
         label = "Square"
@@ -91,6 +94,7 @@ def main():
         print(f"Failed ({len(failed)}):")
         for config, seed in failed:
             print(f"  {config} --seed {seed}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
