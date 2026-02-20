@@ -117,6 +117,10 @@ def main():
         from models.neural import NeuralModel
 
         model = NeuralModel(model_params)
+    elif model_type == "ensemble":
+        from defences.ensemble import EnsembleModel
+
+        model = EnsembleModel(model_params)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
