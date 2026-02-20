@@ -7,7 +7,7 @@ A reproducible benchmark suite for evaluating adversarial robustness of fraud de
 - **Datasets**: CCFD, IEEE-CIS, LCLD (Lending Club), and Sparkov (simulated transactions)
 - **Models**: Tree-based (XGBoost) and Neural (MLP) with automatic class weighting
 - **Attacks**: CAPGD (white-box), HopSkipJump (decision-based black-box), Square Attack (score-based black-box)
-- **Defences**: Adversarial training and input validation
+- **Defences**: Adversarial training, input validation, and ensemble (heterogeneous model voting)
 - **Metrics**: PR-AUC, precision, recall, F1 (fraud-first evaluation)
 - **Reproducibility**: Config-driven experiments with cached splits and preprocessing
 - **Multi-seed evaluation**: 3 seeds per config for statistical rigour
@@ -70,12 +70,12 @@ FraudBench/
 │   └── cards/        # Dataset documentation (ccfd, ieee_cis, lcld, sparkov)
 ├── defences/         # Defence implementations
 ├── evaluation/       # Metrics and results registry
-├── models/           # Model wrappers (Tree, Neural)
+├── models/           # Model wrappers (Tree, Neural, Ensemble)
 ├── preprocessing/    # Data preprocessing pipeline
 ├── results/          # Experiment results and cached artifacts
 ├── runner/           # Experiment runner
 ├── scripts/          # Batch run and figure generation scripts
-└── tests/            # Unit tests (64 tests)
+└── tests/            # Unit tests (67 tests)
 ```
 
 ## Datasets
@@ -88,6 +88,12 @@ FraudBench/
 | Sparkov | ~1.85M | 23 | 0.52% | Sparkov (simulated) |
 
 See `datasets/cards/` for detailed dataset documentation (preprocessing, known issues, citation).
+
+**Download links:**
+- **CCFD**: [Kaggle — Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (~144 MB)
+- **IEEE-CIS**: [Kaggle — IEEE-CIS Fraud Detection](https://www.kaggle.com/c/ieee-fraud-detection/data) (~1.1 GB)
+- **LCLD**: [Kaggle — Lending Club Loan Data](https://www.kaggle.com/datasets/wordsforthewise/lending-club) (~1.6 GB)
+- **Sparkov**: [Kaggle — Sparkov Fraud Transactions](https://www.kaggle.com/datasets/kartik2112/fraud-detection) (~490 MB)
 
 Datasets should be placed at the path specified by `DEFAULT_DATA_ROOT` in `datasets/loader.py`:
 ```
@@ -133,17 +139,50 @@ attack:
   epsilon_values: [0.05, 0.1, 0.2]  # optional: sweep multiple epsilons
 
 defence:
-  type: "none"           # or "adversarial_training", "input_validation"
+  type: "none"           # or "adversarial_training", "input_validation", "ensemble"
+  params:                # Defence-specific parameters (optional)
+    epsilon: 0.1         # adversarial_training: PGD perturbation budget
+    mode: "sanitise"     # input_validation: "sanitise" (clip) or "reject" (drop)
+    z_threshold: 3.0     # input_validation: z-score outlier threshold
 ```
+
+**Field reference:**
+
+| Section | Field | Description |
+|---------|-------|-------------|
+| (root) | `experiment_name` | Unique experiment identifier for the registry |
+| (root) | `seed` | Random seed (overridable via `--seed` CLI flag) |
+| `dataset` | `name` | One of: `ccfd`, `ieee_cis`, `lcld`, `sparkov` |
+| `dataset` | `split_strategy` | `"stratified"` (preserves class ratios) |
+| `dataset` | `test_size` | Test set fraction (e.g. `0.2`) |
+| `dataset` | `val_size` | Validation set fraction (e.g. `0.2`) |
+| `dataset` | `sample_frac` | Optional subsample fraction for faster runs |
+| `model` | `type` | `"neural"`, `"tree"`, or `"ensemble"` |
+| `model.params` | `epochs`, `hidden_dim`, `batch_size`, `lr` | Neural/Ensemble MLP hyperparameters |
+| `model.params` | `max_depth`, `n_estimators`, `learning_rate` | Tree (XGBoost) hyperparameters |
+| `attack` | `type` | `"capgd"`, `"hopskipjump"`, `"square"` |
+| `attack` | `epsilon` | L-inf perturbation budget |
+| `attack` | `steps` | PGD iterations (CAPGD only) |
+| `attack` | `max_iter` | Max iterations (Square/HSJ) |
+| `attack` | `norm` | Norm type: `"inf"`, `2` (Square/HSJ) |
+| `defence` | `type` | `"none"`, `"adversarial_training"`, `"input_validation"`, `"ensemble"` |
+| `defence.params` | `epsilon` | Adversarial training PGD budget |
+| `defence.params` | `mode` | Input validation: `"sanitise"` or `"reject"` |
+| `defence.params` | `z_threshold` | Input validation: z-score threshold (default 3.0) |
 
 ## Available Configs
 
-| Config | Dataset | Model | Description |
-|--------|---------|-------|-------------|
-| `mvp.yaml` | CCFD (10%) | Neural | Quick baseline test |
-| `ccfd.yaml` | CCFD (full) | Neural | Full CCFD experiment |
-| `ccfd_quick.yaml` | CCFD (5%) | Neural | Fast iteration |
-| `ieee_cis.yaml` | IEEE-CIS (10%) | Tree | IEEE-CIS with XGBoost |
+| Config | Dataset | Model | Attack | Defence |
+|--------|---------|-------|--------|---------|
+| `ccfd.yaml` | CCFD | Neural | CAPGD | None |
+| `ccfd_tree.yaml` | CCFD | Tree | CAPGD | None |
+| `ccfd_ensemble.yaml` | CCFD | Ensemble | CAPGD | Ensemble |
+| `ccfd_ensemble_square.yaml` | CCFD | Ensemble | Square | Ensemble |
+| `ccfd_input_val.yaml` | CCFD | Neural | CAPGD | Input Val (z=3) |
+| `ccfd_input_val_z5.yaml` | CCFD | Neural | CAPGD | Input Val (z=5) |
+| `ccfd_input_val_z10.yaml` | CCFD | Neural | CAPGD | Input Val (z=10) |
+
+Similar configs exist for `ieee_cis`, `lcld`, and `sparkov`. See `configs/` for the full set.
 
 ## Running Experiments
 
@@ -201,6 +240,18 @@ model:
     class_weight: true   # Default: true (handles imbalance)
 ```
 
+### Ensemble Model (LR + XGBoost + MLP)
+Heterogeneous ensemble with soft voting. Combines LogisticRegression, XGBoost, and a 3-layer MLP. The MLP component is exposed for CAPGD gradient-based attacks.
+```yaml
+model:
+  type: "ensemble"
+  params:
+    epochs: 15
+    hidden_dim: 128
+    batch_size: 256
+    lr: 0.001
+```
+
 ## Attacks
 
 ### CAPGD (Constrained Auto-PGD)
@@ -237,22 +288,36 @@ attack:
 ## Defences
 
 ### Adversarial Training
+PGD-based adversarial training during model fitting. Neural models only (requires gradients).
 ```yaml
 defence:
   type: "adversarial_training"
   params:
-    epsilon: 0.1
+    epsilon: 0.1       # PGD perturbation budget
 ```
 
 ### Input Validation
+Z-score outlier detection applied at inference time. Works with any model type.
 ```yaml
 defence:
   type: "input_validation"
+  params:
+    mode: "sanitise"     # "sanitise" (clip outliers) or "reject" (drop outlier rows)
+    z_threshold: 3.0     # z-score threshold for outlier detection
+```
+
+### Ensemble
+Heterogeneous model ensemble (LR + XGBoost + MLP) with soft voting. Diversity across model families is the defensive mechanism.
+```yaml
+model:
+  type: "ensemble"
+defence:
+  type: "ensemble"
 ```
 
 ## Testing
 
-Run the test suite (64 tests across 8 test files):
+Run the test suite (67 tests across 9 test files):
 
 ```bash
 uv run pytest tests/ -v
@@ -263,10 +328,10 @@ Test coverage includes:
 - Constraint schema inference (NaN, mixed types, inf values)
 - Cache invalidation logic
 - Attack projection (CAPGD, HopSkipJump, Square)
-- Defence integration (adversarial training, input validation)
+- Defence integration (adversarial training, input validation, ensemble)
 - Results registry
-- Runner pipeline
-- Figure generation
+- Runner pipeline (model dispatch, defence validation)
+- Figure generation and statistical tests (paired t-test, Wilcoxon)
 
 ## Constraint Handling
 
@@ -280,22 +345,42 @@ The constraint schema handles edge cases:
 ## Reproducing Results
 
 ```bash
-# Run all experiments (28 configs x 3 seeds = 84 experiments)
+# Run a single experiment
+uv run python -m runner.run --config configs/ccfd.yaml --seed 42
+
+# Run all baseline experiments (28 configs x 3 seeds)
 uv run python scripts/run_all_seeds.py
 
-# Generate figures from results
-uv run python scripts/generate_figures.py
+# Run ensemble experiments (4 datasets x 3 seeds x 2 attacks = 24 runs)
+uv run python scripts/run_ensemble_experiments.py              # all
+uv run python scripts/run_ensemble_experiments.py --gpu-only   # CAPGD only
+uv run python scripts/run_ensemble_experiments.py --cpu-only   # Square only
 
-# Run a single experiment with a specific seed
-uv run python -m runner.run --config configs/ccfd.yaml --seed 42
+# Run z-threshold sweep (8 configs x 1 seed = 8 runs)
+uv run python scripts/run_z_threshold_sweep.py
+
+# Run remaining HopSkipJump experiments (parallelized CPU)
+uv run python scripts/run_remaining_hsj.py
+
+# Generate figures from results
+uv run python scripts/generate_figures.py --registry results/registry_clean.csv
+
+# Run statistical tests (paired t-test + Wilcoxon signed-rank)
+uv run python scripts/statistical_tests.py --registry results/registry_clean.csv
+
+# Analysis scripts
+uv run python scripts/analyse_adv_training.py --registry results/registry_clean.csv
+uv run python scripts/analyse_z_threshold.py --registry results/registry.csv
+uv run python scripts/analyse_input_validation.py --registry results/registry_clean.csv
 ```
 
-Results are logged to `results/registry.csv`. Figures are saved to `results/figures/`.
+Results are logged to `results/registry.csv`. Use `results/registry_clean.csv` (deduplicated) for analysis. Figures are saved to `results/figures/`.
 
 ## Known Limitations
 
-- **Adversarial training + tree models**: Adversarial training is incompatible with tree models because the PGD inner loop requires gradients. These combinations are documented as N/A in results.
-- **CAPGD + tree models**: CAPGD is a gradient-based (white-box) attack and only works on neural models. Use HopSkipJump or Square Attack for tree models.
+- **Adversarial training + tree/ensemble models**: Adversarial training requires gradients (backpropagation) and is incompatible with tree and ensemble models. The runner raises `ValueError` for these combinations.
+- **CAPGD + tree models**: CAPGD is a gradient-based (white-box) attack and only works on neural models. For ensemble models, CAPGD targets the MLP component. Use HopSkipJump or Square Attack for tree-only models.
+- **Ensemble GPU requirement**: All ensemble experiments require GPU for the MLP training component, even when using black-box attacks (Square, HSJ).
 
 ## License
 
