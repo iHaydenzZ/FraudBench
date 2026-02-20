@@ -1,7 +1,5 @@
 """Tests for the experiment runner CLI."""
 
-import pytest
-
 from runner.run import load_config, build_parser
 
 

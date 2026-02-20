@@ -8,12 +8,7 @@ import argparse
 import os
 
 import pandas as pd
-import numpy as np
 from scipy import stats
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 
 def load_registry(path: str) -> pd.DataFrame:
