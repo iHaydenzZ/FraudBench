@@ -57,9 +57,14 @@ uv run python scripts/generate_figures.py
 
 # Batch run all experiments
 uv run python scripts/run_all_seeds.py
+
+# Run remaining HopSkipJump experiments (parallelized CPU)
+uv run python scripts/run_remaining_hsj.py
 ```
 
 ## Project Context
 
 See `docs/Context.md` for architecture, experiment state, and research findings.
 See `docs/ToDo.md` for remaining tasks and priorities.
+
+**Canonical results:** Use `results/registry_clean.csv` (151 deduplicated rows) for all analysis. Raw registries (`registry.csv`, `20260216_GPU_only_registry.csv`) contain duplicates and superseded data.

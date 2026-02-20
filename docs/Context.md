@@ -1,6 +1,6 @@
 # FraudBench: Project Context
 
-> **Last updated:** 2026-02-16
+> **Last updated:** 2026-02-20
 
 ---
 
@@ -15,11 +15,11 @@ FraudBench (FRBS — Fraud-Robust Benchmark Suite) evaluates adversarial robustn
 | Tier | Content | Status |
 |------|---------|--------|
 | Tier 1 | MVP + epsilon curves + multi-seed | Done |
-| Tier 2 (minimum) | Tier 1 + 4 datasets | Done (with caveats) |
-| Tier 3 (target) | Tier 2 + black-box attacks | Pending |
+| Tier 2 (minimum) | Tier 1 + 4 datasets | Done |
+| Tier 3 (target) | Tier 2 + black-box attacks | Partial (Square done, HSJ 6/12) |
 | Tier 4 (stretch) | Tier 3 + Ensemble + CTGAN + Transferability | Not started |
 
-**Current position:** Tier 2 complete. 4 datasets covered with 3-seed CAPGD + epsilon sweeps. IEEE-CIS validity_rate bug fixed and re-run. Black-box attacks (HSJ + Square) not yet run.
+**Current position:** Tier 3 in progress. Square Attack complete (4 datasets × 3 seeds). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Deduplicated registry at `results/registry_clean.csv` (151 rows).
 
 ---
 
@@ -38,7 +38,7 @@ Load Config -> Load Dataset -> Split (stratified, cached) -> Preprocess (Standar
 
 - `models/base.py`: `BaseModel` ABC with `fit()` and `predict_proba()`
 - `constraints/schema.py`: `ConstraintSchema` inferred from training data; handles NaN/inf/mixed types; used by CAPGD for constraint-aware projection
-- `evaluation/registry.py`: Logs results to `results/registry.csv` (22-column schema)
+- `evaluation/registry.py`: Logs results to `results/registry.csv` (22-column schema). Deduplicated canonical data in `results/registry_clean.csv`.
 
 ### Data Flow
 
@@ -47,8 +47,8 @@ Load Config -> Load Dataset -> Split (stratified, cached) -> Preprocess (Standar
 ### Attack Pipeline
 
 - `attacks/capgd.py`: Constrained Auto-PGD (white-box, gradient-based). Perturbs fraud samples within feature bounds defined by `ConstraintSchema`.
-- `attacks/hopskipjump.py`: Decision-based black-box attack via ART. Can attack tree models. **Code ready, experiments not run.**
-- `attacks/square.py`: Score-based black-box attack via ART. Can attack tree models. **Code ready, experiments not run.**
+- `attacks/hopskipjump.py`: Decision-based black-box attack via ART. Can attack tree models. **6/12 experiments run** (ccfd 3/3, ieee_cis 2/3, lcld 1/3, sparkov 0/3).
+- `attacks/square.py`: Score-based black-box attack via ART. Can attack tree models. **All 12 experiments complete.**
 
 ### Defences
 
@@ -88,7 +88,7 @@ Split indices and preprocessor artifacts are cached in `results/`. Cache keys in
 ```
 FraudBench/
 ├── attacks/          # CAPGD, HopSkipJump, Square Attack
-├── configs/          # YAML experiment configs (32 files)
+├── configs/          # YAML experiment configs (36 files)
 ├── constraints/      # Feature constraint schema + validator
 ├── datasets/         # Loaders for 4 datasets + cards/
 │   └── cards/        # Dataset documentation (4 cards)
@@ -96,9 +96,9 @@ FraudBench/
 ├── evaluation/       # Metrics + registry
 ├── models/           # Tree (XGBoost) + Neural (MLP)
 ├── preprocessing/    # StandardScaler + OneHotEncoder pipeline
-├── results/          # registry.csv + cached artifacts
+├── results/          # registry.csv, registry_clean.csv + cached artifacts
 ├── runner/           # CLI entrypoint
-├── scripts/          # Batch runner, figure generation, analysis
+├── scripts/          # Batch runner, figure generation, analysis, run_remaining_hsj.py
 ├── tests/            # Pytest suite (77 tests)
 ├── notebooks/        # Colab runner + debug notebooks
 ├── docs/             # This file + ToDo.md
@@ -109,15 +109,16 @@ FraudBench/
 
 ## 3. Current Experiment State
 
-### Registry Statistics
+### Registry Statistics (registry_clean.csv — deduplicated)
 
-- **Total rows:** 235 (includes re-runs and epsilon sweeps; some duplicates from multi-date runs)
-- **Date range:** 2026-02-09 to 2026-02-16
-- **Datasets:** CCFD (74), IEEE-CIS (53), LCLD (51), Sparkov (57)
-- **Models:** Neural MLP (185), XGBoost (50)
-- **Attacks executed:** CAPGD only (HopSkipJump + Square code ready, not run)
-- **Defences:** none (155), adversarial_training (28), input_validation (52)
-- **Seeds:** 42 (104), 123 (66), 456 (65)
+- **Total rows:** 151 (deduplicated; keeps latest timestamp per experiment+seed+epsilon)
+- **Raw registries:** `registry.csv` (172 rows), `20260216_GPU_only_registry.csv` (236 rows) — merged and deduplicated into `registry_clean.csv`
+- **Date range:** 2026-02-13 to 2026-02-19
+- **Datasets:** CCFD (39), IEEE-CIS (38), LCLD (37), Sparkov (37)
+- **Models:** Neural MLP (108), XGBoost (43)
+- **Attacks executed:** CAPGD (129), Square (12), HopSkipJump (6) — 4 remaining HSJ not yet run
+- **Defences:** none (117), adversarial_training (12), input_validation (22)
+- **Seeds:** 42 (53), 123 (50), 456 (48)
 - **Unique configs executed:** 20/24 (83%) -- 4 tree+adv_train are N/A (gradients required)
 
 ### Coverage Matrix (CAPGD, 3 seeds each)
@@ -135,9 +136,18 @@ FraudBench/
 
 \* XGBoost + adversarial training is architecturally incompatible (requires gradients). This is itself a finding.
 
+### Black-Box Attack Coverage (XGBoost, no defence, 3 seeds each)
+
+| Dataset | Square Attack | HopSkipJump |
+|---------|--------------|-------------|
+| CCFD | Done (3/3) | Done (3/3) |
+| IEEE-CIS | Done (3/3) | 2/3 (missing seed 456) |
+| LCLD | Done (3/3) | 1/3 (missing seeds 123, 456) |
+| Sparkov | Done (3/3) | 0/3 (not started) |
+
 ### Epsilon Sweeps (3 seeds)
 
-Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for all 4 datasets (Neural, no defence) with seeds 42, 123, and 456. Seed 42 has duplicate runs from Feb 12 and Feb 16.
+Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for all 4 datasets (Neural, no defence) with seeds 42, 123, and 456. Duplicates from multi-date runs resolved in `registry_clean.csv`.
 
 ---
 
@@ -158,6 +168,8 @@ Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for all 4 datase
 
 3. **XGBoost is immune to gradient-based CAPGD** (expected -- tree models lack gradients). Clean = Robust for all tree experiments (CCFD: 0.851, IEEE-CIS: 0.568, LCLD: 0.368, Sparkov: 0.747).
 
+4. **Black-box attacks successfully degrade XGBoost.** Square Attack and HopSkipJump both reduce robust metrics on tree models, confirming that XGBoost's CAPGD immunity does not extend to decision/score-based attacks. HopSkipJump is particularly devastating on CCFD (robust_accuracy drops to ~0.0).
+
 ### Negative Results / Issues
 
 1. **Input validation consistently degrades robustness** -- never improves it (worst case: -76%). Analysis suggests this is a genuine finding: CAPGD already respects constraints, so bound clipping has no effect. The z-score clipping destroys discriminative signal the model relies on.
@@ -172,7 +184,7 @@ Sweeps at epsilon = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3} completed for all 4 datase
 
 Root cause: `constraints/validator.py` failed on NaN categorical values (NaN != NaN so `NaN not in allowed_values` was always True). The `has_missing` flag existed but was never checked during validation.
 
-**Status:** Fixed and re-run. Feb 12+ IEEE-CIS rows show `validity_rate ~0.997`. Old rows from Feb 9-10 (15 rows with `validity_rate = 0.0000`) remain in the registry but are superseded by the re-runs. These should be excluded when computing final results.
+**Status:** Fixed and re-run. Feb 12+ IEEE-CIS rows show `validity_rate ~0.997`. Old rows from Feb 9-10 have been excluded from `registry_clean.csv` (the deduplicated canonical registry). No rows with `validity_rate = 0.0000` remain in the clean registry.
 
 ### Addressed: Input Validation Performance
 
@@ -223,7 +235,7 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 |-------|-------|---------|--------|
 | Phase 1: Data Preparation | Wk 1-2 | 4 datasets cleaned, preprocessed | Done |
 | Phase 2: Model Building | Wk 3-4 | XGBoost + Neural MLP baselines | Done |
-| Phase 3: Attack Implementation | Wk 5-6 | CAPGD + black-box attacks | Partial (CAPGD only, black-box code ready) |
+| Phase 3: Attack Implementation | Wk 5-6 | CAPGD + black-box attacks | Mostly done (CAPGD complete, Square complete, HSJ 6/12) |
 | Phase 4: Defence Integration | Wk 7-9 | 4 defence methods | Partial (2/4: adv training + input validation) |
-| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Partial (CAPGD matrix complete, 3-seed eps sweeps done, no black-box or transferability) |
+| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Partial (CAPGD matrix + Square complete, eps sweeps done, HSJ 6/12, no transferability) |
 | Phase 6: Analysis & Reporting | Wk 13 | Final report + visualizations | Not started |

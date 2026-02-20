@@ -1,7 +1,7 @@
 # FraudBench: To-Do List
 
-> **Last updated:** 2026-02-16
-> **Estimated remaining work:** P1 ~6-10h, All ~12-20h
+> **Last updated:** 2026-02-20
+> **Estimated remaining work:** P1 ~4-6h, All ~10-18h
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### ~~1. Re-run IEEE-CIS Experiments~~ -- DONE
 
-Re-run completed on Feb 12-16. New IEEE-CIS rows show `validity_rate ~0.997`. Old rows (Feb 9-10, 15 rows with `validity_rate = 0.0000`) remain in registry but are superseded. Exclude old rows when computing final results.
+Re-run completed on Feb 12-16. New IEEE-CIS rows show `validity_rate ~0.997`. Old rows from Feb 9-10 have been excluded from `results/registry_clean.csv` (the deduplicated canonical registry created Feb 20).
 
 ---
 
@@ -23,41 +23,25 @@ Input validation consistently degrades robustness. This is a genuine finding (no
 
 ## P1 -- Required for Benchmark Status
 
-### 3. Run Black-Box Attack Experiments (24 experiments)
+### 3. Run Black-Box Attack Experiments -- PARTIAL
 
-Tree models (XGBoost) are immune to gradient-based CAPGD. Without black-box attacks, we cannot evaluate defence effectiveness on tree models. This is the biggest gap.
+Tree models (XGBoost) are immune to gradient-based CAPGD. Black-box attacks are needed to evaluate tree model robustness.
 
-Code and configs exist. Need to run 8 configs x 3 seeds = 24 experiments.
+**Square Attack: DONE (12/12).** All 4 datasets x 3 seeds complete in `registry_clean.csv`.
+
+**HopSkipJump: 6/12 done.** Remaining 6 experiments:
 
 ```bash
-# HopSkipJump (12 experiments)
-uv run python -m runner.run --config configs/ccfd_tree_hsj.yaml --seed 42
-uv run python -m runner.run --config configs/ccfd_tree_hsj.yaml --seed 123
-uv run python -m runner.run --config configs/ccfd_tree_hsj.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_tree_hsj.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_tree_hsj.yaml --seed 123
+# Remaining HopSkipJump experiments (use scripts/run_remaining_hsj.py for parallelized CPU runs)
 uv run python -m runner.run --config configs/ieee_cis_tree_hsj.yaml --seed 456
-uv run python -m runner.run --config configs/lcld_tree_hsj.yaml --seed 42
 uv run python -m runner.run --config configs/lcld_tree_hsj.yaml --seed 123
 uv run python -m runner.run --config configs/lcld_tree_hsj.yaml --seed 456
 uv run python -m runner.run --config configs/sparkov_tree_hsj.yaml --seed 42
 uv run python -m runner.run --config configs/sparkov_tree_hsj.yaml --seed 123
 uv run python -m runner.run --config configs/sparkov_tree_hsj.yaml --seed 456
-
-# Square Attack (12 experiments)
-uv run python -m runner.run --config configs/ccfd_tree_square.yaml --seed 42
-uv run python -m runner.run --config configs/ccfd_tree_square.yaml --seed 123
-uv run python -m runner.run --config configs/ccfd_tree_square.yaml --seed 456
-uv run python -m runner.run --config configs/ieee_cis_tree_square.yaml --seed 42
-uv run python -m runner.run --config configs/ieee_cis_tree_square.yaml --seed 123
-uv run python -m runner.run --config configs/ieee_cis_tree_square.yaml --seed 456
-uv run python -m runner.run --config configs/lcld_tree_square.yaml --seed 42
-uv run python -m runner.run --config configs/lcld_tree_square.yaml --seed 123
-uv run python -m runner.run --config configs/lcld_tree_square.yaml --seed 456
-uv run python -m runner.run --config configs/sparkov_tree_square.yaml --seed 42
-uv run python -m runner.run --config configs/sparkov_tree_square.yaml --seed 123
-uv run python -m runner.run --config configs/sparkov_tree_square.yaml --seed 456
 ```
+
+HSJ experiments are slow (~7-11h each). Use `scripts/run_remaining_hsj.py` for parallelized CPU execution.
 
 **Verify:** Tree model rows show `robust_pr_auc < clean_pr_auc`.
 
@@ -65,7 +49,7 @@ uv run python -m runner.run --config configs/sparkov_tree_square.yaml --seed 456
 
 ### ~~4. Epsilon Sweeps -- Multi-Seed~~ -- DONE
 
-All 4 datasets have 3-seed epsilon sweeps (eps = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3}) completed on Feb 16. Seed 42 has duplicate runs from Feb 12 and Feb 16 — deduplicate when computing final results.
+All 4 datasets have 3-seed epsilon sweeps (eps = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3}) completed on Feb 16. Duplicates resolved in `registry_clean.csv` (keeps latest timestamp per experiment+seed+epsilon).
 
 ---
 
@@ -174,7 +158,7 @@ uv run python scripts/analyse_input_validation.py
 |---|------|------|-------------|----------|--------|
 | 1 | ~~Re-run IEEE-CIS (NaN fix)~~ | GPU | 15 | P0 | **Done** |
 | 2 | Document input validation finding | Writing | -- | P0 | Pending |
-| 3 | Black-box attacks (HSJ + Square) | GPU | 24 | P1 | Pending |
+| 3 | Black-box attacks (HSJ + Square) | CPU/GPU | 24 | P1 | **Partial** (Square done, HSJ 6/12) |
 | 4 | ~~Epsilon sweeps multi-seed~~ | GPU | 8 (x6 eps) | P1 | **Done** |
 | 5 | Reproducibility docs | Writing | -- | P1 | Pending |
 | 6 | Document tree+adv_train gap | Writing | -- | P1 | Pending |
@@ -185,6 +169,6 @@ uv run python scripts/analyse_input_validation.py
 | 11 | CTGAN augmentation | Code+GPU | TBD | P2 | Pending |
 | 12 | Model zoo | GPU | -- | P2 | Pending |
 
-**Total GPU experiments remaining:** 24 (P1: black-box) or ~28 (all including transferability)
+**Total GPU/CPU experiments remaining:** 6 (P1: remaining HSJ) or ~10 (all including transferability)
 
-**Recommended:** Run `uv run python scripts/run_all_seeds.py` on Colab (T4 GPU) for batch execution.
+**Recommended:** Run `uv run python scripts/run_remaining_hsj.py` for parallelized CPU execution of remaining HSJ experiments.
