@@ -20,14 +20,14 @@ EXPERIMENTS = [
     # ("configs/lcld_tree_square.yaml", 123),
     # ieee_cis s42 already completed
     # ("configs/ieee_cis_tree_hsj.yaml", 42),
-    ("configs/ieee_cis_tree_hsj.yaml", 123),
-    ("configs/ieee_cis_tree_hsj.yaml", 456),
-    ("configs/lcld_tree_hsj.yaml", 42),
-    ("configs/lcld_tree_hsj.yaml", 123),
-    ("configs/lcld_tree_hsj.yaml", 456),
+    # ("configs/ieee_cis_tree_hsj.yaml", 123),
+    # ("configs/ieee_cis_tree_hsj.yaml", 456),
+    # ("configs/lcld_tree_hsj.yaml", 42),
+    # ("configs/lcld_tree_hsj.yaml", 123),
+    # ("configs/lcld_tree_hsj.yaml", 456),
     ("configs/sparkov_tree_hsj.yaml", 42),
-    ("configs/sparkov_tree_hsj.yaml", 123),
-    ("configs/sparkov_tree_hsj.yaml", 456),
+    #     ("configs/sparkov_tree_hsj.yaml", 123),
+    #     ("configs/sparkov_tree_hsj.yaml", 456),
 ]
 
 MAX_WORKERS = 3
