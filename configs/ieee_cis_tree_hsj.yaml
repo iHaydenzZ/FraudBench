@@ -18,9 +18,9 @@ model:
 
 attack:
   type: "hopskipjump"
-  max_iter: 20
-  max_eval: 1000
-  init_eval: 100
+  max_iter: 5
+  max_eval: 200
+  init_eval: 50
   norm: "inf"
 
 defence:

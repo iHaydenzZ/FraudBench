@@ -14,7 +14,7 @@ class TreeModel(BaseModel):
             "max_depth": 3,
             "learning_rate": 0.1,
             "n_estimators": 100,
-            "n_jobs": -1,
+            "n_jobs": int(os.environ.get("XGBOOST_NTHREADS", 0)) or -1,
             "tree_method": "hist",
             "objective": "binary:logistic",
             "eval_metric": "aucpr",
