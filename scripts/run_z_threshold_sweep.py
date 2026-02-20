@@ -52,8 +52,9 @@ def main():
     parser = argparse.ArgumentParser(description="Z-threshold sweep batch runner")
     parser.add_argument("--cpu-only", action="store_true", help="Tree (CPU) configs only")
     parser.add_argument("--gpu-only", action="store_true", help="Neural (GPU) configs only")
-    parser.add_argument("--workers", type=int, default=None,
-                        help="Max parallel workers (default: 1 for GPU, 2 for CPU)")
+    parser.add_argument(
+        "--workers", type=int, default=None, help="Max parallel workers (default: 1 for GPU, 2 for CPU)"
+    )
     args = parser.parse_args()
 
     if args.cpu_only and args.gpu_only:

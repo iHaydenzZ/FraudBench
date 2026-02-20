@@ -86,6 +86,7 @@ class TestEnsembleModel:
 
         # Get individual sub-model predictions
         import torch
+
         lr_probs = model.lr_model.predict_proba(X)[:, 1]
         xgb_probs = model.xgb_model.predict_proba(X)[:, 1]
 

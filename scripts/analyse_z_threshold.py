@@ -13,6 +13,7 @@ import pandas as pd
 
 def load_registry(path: str) -> pd.DataFrame:
     from scripts.generate_figures import load_registry as _load
+
     return _load(path)
 
 
@@ -50,8 +51,7 @@ def main():
     relevant["z_threshold"] = relevant["experiment_name"].apply(extract_z_threshold)
 
     print("\nZ-threshold comparison (CAPGD attack only):")
-    cols = ["dataset", "model_type", "attack_type", "defence_type", "z_threshold",
-            "clean_pr_auc", "robust_pr_auc"]
+    cols = ["dataset", "model_type", "attack_type", "defence_type", "z_threshold", "clean_pr_auc", "robust_pr_auc"]
     print(relevant[cols].sort_values(["dataset", "model_type", "z_threshold"]).to_string(index=False))
 
     # Save CSV

@@ -13,11 +13,13 @@ from scipy import stats
 
 def load_registry(path: str) -> pd.DataFrame:
     from scripts.generate_figures import load_registry as _load
+
     return _load(path)
 
 
 def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
     from scripts.generate_figures import aggregate_seeds as _agg
+
     return _agg(df)
 
 

@@ -56,9 +56,7 @@ class EnsembleModel(BaseModel):
 
         # 1. Logistic Regression
         print("    [1/3] LogisticRegression...")
-        self.lr_model = LogisticRegression(
-            max_iter=1000, class_weight="balanced", solver="lbfgs"
-        )
+        self.lr_model = LogisticRegression(max_iter=1000, class_weight="balanced", solver="lbfgs")
         self.lr_model.fit(X, y)
 
         # 2. XGBoost
@@ -78,23 +76,17 @@ class EnsembleModel(BaseModel):
         # 3. MLP (class-weighted loss, same approach as NeuralModel)
         print("    [3/3] SimpleMLP...")
         input_dim = X.shape[1]
-        pos_weight_tensor = torch.tensor(
-            [neg_count / pos_count], dtype=torch.float32
-        ).to(self.device)
+        pos_weight_tensor = torch.tensor([neg_count / pos_count], dtype=torch.float32).to(self.device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
         self._use_logits = True
 
-        self.mlp = SimpleMLP(input_dim, self.mlp_hidden_dim, use_sigmoid=False).to(
-            self.device
-        )
+        self.mlp = SimpleMLP(input_dim, self.mlp_hidden_dim, use_sigmoid=False).to(self.device)
         self.model = self.mlp  # CAPGD reads model.model
         self.mlp.train()
         optimizer = optim.Adam(self.mlp.parameters(), lr=self.mlp_lr)
 
         X_tensor = torch.tensor(X.values, dtype=torch.float32).to(self.device)
-        y_tensor = (
-            torch.tensor(y.values, dtype=torch.float32).unsqueeze(1).to(self.device)
-        )
+        y_tensor = torch.tensor(y.values, dtype=torch.float32).unsqueeze(1).to(self.device)
         dataset = TensorDataset(X_tensor, y_tensor)
         loader = DataLoader(dataset, batch_size=self.mlp_batch_size, shuffle=True)
 
@@ -108,10 +100,7 @@ class EnsembleModel(BaseModel):
                 optimizer.step()
                 total_loss += loss.item()
             if (epoch + 1) % 5 == 0:
-                print(
-                    f"      MLP Epoch {epoch + 1}/{self.mlp_epochs}, "
-                    f"Loss: {total_loss / len(loader):.4f}"
-                )
+                print(f"      MLP Epoch {epoch + 1}/{self.mlp_epochs}, Loss: {total_loss / len(loader):.4f}")
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Soft voting: average P(fraud) from all three sub-models."""
@@ -158,9 +147,7 @@ class EnsembleModel(BaseModel):
         instance.xgb_model = data["xgb_model"]
 
         cfg = data["mlp_config"]
-        instance.mlp = SimpleMLP(
-            cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]
-        ).to(instance.device)
+        instance.mlp = SimpleMLP(cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]).to(instance.device)
         state_dict = {k: v.to(instance.device) for k, v in data["mlp_state_dict"].items()}
         instance.mlp.load_state_dict(state_dict)
         instance.mlp.eval()

@@ -91,7 +91,8 @@ class TestModelDispatch:
         )
         result = subprocess.run(
             [sys.executable, "-m", "runner.run", "--config", str(config_file)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode != 0
         assert "not supported for ensemble" in result.stderr

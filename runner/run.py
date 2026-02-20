@@ -35,6 +35,15 @@ def main():
 
     print("Config loaded successfully.")
 
+    # Early validation: incompatible model+defence combos (before dataset loading)
+    model_type = config["model"]["type"]
+    defence_type = config.get("defence", {}).get("type", "none")
+    if defence_type == "adversarial_training" and model_type in ("tree", "ensemble"):
+        raise ValueError(
+            f"Adversarial training is not supported for {model_type} models. "
+            "Use defence.type: 'input_validation' or 'none' instead."
+        )
+
     # 1. Load Dataset
     print(f"\n[1] Loading dataset: {config['dataset']['name']}...")
     from datasets.loader import load_dataset
@@ -91,16 +100,9 @@ def main():
     processed_feature_names = X_train_processed.columns.tolist()
 
     print("\n[4] Training Model...")
-    model_type = config["model"]["type"]
     model_params = config["model"].get("params", {})
 
-    # Check for Adversarial Training Defence
     defence_config = config.get("defence", {})
-    if defence_config.get("type") == "adversarial_training" and model_type in ("tree", "ensemble"):
-        raise ValueError(
-            f"Adversarial training is not supported for {model_type} models. "
-            "Use defence.type: 'input_validation' or 'none' instead."
-        )
     if defence_config.get("type") == "adversarial_training":
         print("    Configuring Adversarial Training...")
         model_params["adv_training"] = True

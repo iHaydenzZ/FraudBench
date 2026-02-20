@@ -235,9 +235,7 @@ class TestStatisticalTests:
         results = pairwise_defence_tests(df)
 
         # none vs adversarial_training should have Wilcoxon results
-        row_na = results[
-            (results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")
-        ].iloc[0]
+        row_na = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
         assert not np.isnan(row_na["w_statistic"])
         assert not np.isnan(row_na["w_p_value"])
         assert row_na["w_p_value"] < 0.05  # large gap → significant
@@ -251,9 +249,7 @@ class TestStatisticalTests:
             robust_adv=(0.80, 0.85, 0.90),
         )
         results = pairwise_defence_tests(df)
-        row_na = results[
-            (results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")
-        ].iloc[0]
+        row_na = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
         assert np.isnan(row_na["w_statistic"])
         assert np.isnan(row_na["w_p_value"])
         # t-test should still work
