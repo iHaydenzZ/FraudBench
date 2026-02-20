@@ -10,6 +10,7 @@ wheels/
 
 # Virtual environments
 .venv
+.vscode
 
 # Local Results (cache artifacts, not registry)
 results/*.joblib
