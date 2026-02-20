@@ -68,14 +68,14 @@ FraudBench/
 ├── constraints/      # Feature constraint schema and validation
 ├── datasets/         # Dataset loaders and cards
 │   └── cards/        # Dataset documentation (ccfd, ieee_cis, lcld, sparkov)
-├── defences/         # Defence implementations
+├── defences/         # Defence implementations (input validation, adv training, ensemble)
 ├── evaluation/       # Metrics and results registry
-├── models/           # Model wrappers (Tree, Neural, Ensemble)
+├── models/           # Model wrappers (Tree, Neural)
 ├── preprocessing/    # Data preprocessing pipeline
 ├── results/          # Experiment results and cached artifacts
 ├── runner/           # Experiment runner
 ├── scripts/          # Batch run and figure generation scripts
-└── tests/            # Unit tests (67 tests)
+└── tests/            # Unit tests (87 tests)
 ```
 
 ## Datasets
@@ -84,8 +84,8 @@ FraudBench/
 |---------|---------|----------|------------|--------|
 | CCFD | 284,807 | 30 | 0.17% | Kaggle (real) |
 | IEEE-CIS | 590,540 | 392 | 3.5% | IEEE-CIS / Vesta (real) |
-| LCLD | ~2.26M (filtered) | ~74 | 19.6% | Lending Club (real) |
-| Sparkov | ~1.85M | 23 | 0.52% | Sparkov (simulated) |
+| LCLD | ~2.26M (filtered) | 63 | 19.6% | Lending Club (real) |
+| Sparkov | ~1.85M | 11 | 0.52% | Sparkov (simulated) |
 
 See `datasets/cards/` for detailed dataset documentation (preprocessing, known issues, citation).
 
@@ -97,15 +97,14 @@ See `datasets/cards/` for detailed dataset documentation (preprocessing, known i
 
 Datasets should be placed at the path specified by `DEFAULT_DATA_ROOT` in `datasets/loader.py`:
 ```
-/path/to/datasets/
+<DEFAULT_DATA_ROOT>/
 ├── CCFD/
 │   └── creditcard.csv
-├── IEEE-CIS/
-│   └── ieee-fraud-detection/
-│       ├── train_transaction.csv
-│       └── train_identity.csv (optional)
+├── ieee-fraud-detection/
+│   ├── train_transaction.csv
+│   └── train_identity.csv (optional)
 ├── LCLD/
-│   └── accepted_2007_to_2018Q4.csv
+│   └── loan.csv
 └── Sparkov/
     ├── fraudTrain.csv
     └── fraudTest.csv
@@ -255,7 +254,7 @@ model:
 ## Attacks
 
 ### CAPGD (Constrained Auto-PGD)
-White-box attack with constraint-aware projection. Requires gradients -- **neural models only**.
+White-box attack with constraint-aware projection. Requires gradients — works with **neural** and **ensemble** models (targets MLP component).
 ```yaml
 attack:
   type: "capgd"
@@ -317,7 +316,7 @@ defence:
 
 ## Testing
 
-Run the test suite (67 tests across 9 test files):
+Run the test suite (87 tests across 10 test files):
 
 ```bash
 uv run pytest tests/ -v
