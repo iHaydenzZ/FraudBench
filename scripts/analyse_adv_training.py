@@ -9,6 +9,7 @@ import os
 
 import pandas as pd
 import numpy as np
+from scipy import stats
 import matplotlib
 
 matplotlib.use("Agg")
@@ -92,6 +93,22 @@ def main():
         print(f"    Robust PR-AUC gain: {row['robust_gain']:+.4f}")
         if "fraud_rate" in row:
             print(f"    Dataset fraud rate:  {row['fraud_rate']:.5f}")
+
+    # Correlation analysis: dataset characteristics vs robustness gain
+    corr_vars = ["fraud_rate", "n_features", "n_samples"]
+    available = [v for v in corr_vars if v in tradeoffs.columns]
+    if len(tradeoffs) >= 3 and available:
+        print("\n" + "-" * 80)
+        print("CORRELATION: Dataset Characteristics vs Robust PR-AUC Gain")
+        print("-" * 80)
+        for var in available:
+            col = tradeoffs[var].astype(float)
+            gain = tradeoffs["robust_gain"].astype(float)
+            if col.nunique() < 2 or gain.nunique() < 2:
+                print(f"  {var}: insufficient variance for correlation")
+                continue
+            rho, p = stats.spearmanr(col, gain)
+            print(f"  {var:>12s}:  Spearman rho={rho:+.3f}  p={p:.4f}")
 
     # Save CSV
     csv_path = os.path.join(args.output, "adv_training_tradeoffs.csv")

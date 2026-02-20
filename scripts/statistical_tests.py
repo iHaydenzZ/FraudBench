@@ -49,25 +49,28 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
 
     for (dataset, model_type), grp in df.groupby(["dataset", "model_type"]):
         for def_a, def_b in pairs:
-            vals_a = grp[grp["defence_type"] == def_a].sort_values("seed")["robust_pr_auc"].dropna().values
-            vals_b = grp[grp["defence_type"] == def_b].sort_values("seed")["robust_pr_auc"].dropna().values
+            df_a = grp[grp["defence_type"] == def_a][["seed", "robust_pr_auc"]].dropna()
+            df_b = grp[grp["defence_type"] == def_b][["seed", "robust_pr_auc"]].dropna()
+
+            # Inner join on seed to ensure correct pairing
+            paired = df_a.merge(df_b, on="seed", suffixes=("_a", "_b"))
 
             row = {
                 "dataset": dataset,
                 "model_type": model_type,
                 "defence_a": def_a,
                 "defence_b": def_b,
-                "n_a": len(vals_a),
-                "n_b": len(vals_b),
+                "n_a": len(df_a),
+                "n_b": len(df_b),
             }
 
             # Need at least 3 paired observations for a meaningful t-test
-            n_paired = min(len(vals_a), len(vals_b))
+            n_paired = len(paired)
             if n_paired < 3:
                 row.update(
                     {
-                        "mean_a": np.mean(vals_a) if len(vals_a) > 0 else np.nan,
-                        "mean_b": np.mean(vals_b) if len(vals_b) > 0 else np.nan,
+                        "mean_a": float(df_a["robust_pr_auc"].mean()) if len(df_a) > 0 else np.nan,
+                        "mean_b": float(df_b["robust_pr_auc"].mean()) if len(df_b) > 0 else np.nan,
                         "mean_diff": np.nan,
                         "t_statistic": np.nan,
                         "p_value": np.nan,
@@ -81,9 +84,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                 rows.append(row)
                 continue
 
-            # Trim to equal length (paired by sorted seed)
-            a = vals_a[:n_paired]
-            b = vals_b[:n_paired]
+            a = paired["robust_pr_auc_a"].values
+            b = paired["robust_pr_auc_b"].values
 
             mean_diff = float(np.mean(a) - np.mean(b))
 

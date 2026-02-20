@@ -43,19 +43,19 @@ def main():
     df = load_registry(args.registry)
     print(f"Loaded {len(df)} rows from {args.registry}")
 
-    # Filter to relevant experiments
+    # Filter to relevant experiments (CAPGD only for apples-to-apples comparison)
     relevant = df[
         (df["dataset"].isin(["ccfd", "sparkov"]))
         & (df["defence_type"].isin(["none", "input_validation"]))
+        & (df["attack_type"] == "capgd")
         & (df["seed"] == 42)
     ].copy()
 
-    # Extract z_threshold
+    # Extract z_threshold (NaN for baseline rows with no defence)
     relevant["z_threshold"] = relevant["experiment_name"].apply(extract_z_threshold)
-    relevant.loc[relevant["defence_type"] == "none", "z_threshold"] = "none"
 
-    print("\nZ-threshold comparison:")
-    cols = ["dataset", "model_type", "defence_type", "z_threshold",
+    print("\nZ-threshold comparison (CAPGD attack only):")
+    cols = ["dataset", "model_type", "attack_type", "defence_type", "z_threshold",
             "clean_pr_auc", "robust_pr_auc"]
     print(relevant[cols].sort_values(["dataset", "model_type", "z_threshold"]).to_string(index=False))
 

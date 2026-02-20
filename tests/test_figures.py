@@ -220,6 +220,45 @@ class TestStatisticalTests:
         d_zero = compute_cohens_d(g1, g1)
         assert d_zero == 0.0
 
+    def test_wilcoxon_computed_with_six_seeds(self):
+        """Wilcoxon signed-rank test is computed when n_paired >= 6."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        seeds = (1, 2, 3, 4, 5, 6)
+        df = self._make_registry(
+            seeds=seeds,
+            robust_none=(0.50, 0.52, 0.54, 0.56, 0.58, 0.60),
+            robust_adv=(0.80, 0.82, 0.84, 0.86, 0.88, 0.90),
+            robust_iv=(0.45, 0.47, 0.49, 0.51, 0.53, 0.55),
+            robust_ens=(0.70, 0.72, 0.74, 0.76, 0.78, 0.80),
+        )
+        results = pairwise_defence_tests(df)
+
+        # none vs adversarial_training should have Wilcoxon results
+        row_na = results[
+            (results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")
+        ].iloc[0]
+        assert not np.isnan(row_na["w_statistic"])
+        assert not np.isnan(row_na["w_p_value"])
+        assert row_na["w_p_value"] < 0.05  # large gap → significant
+
+    def test_wilcoxon_nan_with_few_seeds(self):
+        """Wilcoxon is NaN when n_paired < 6."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        df = self._make_registry(
+            robust_none=(0.50, 0.55, 0.60),
+            robust_adv=(0.80, 0.85, 0.90),
+        )
+        results = pairwise_defence_tests(df)
+        row_na = results[
+            (results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")
+        ].iloc[0]
+        assert np.isnan(row_na["w_statistic"])
+        assert np.isnan(row_na["w_p_value"])
+        # t-test should still work
+        assert row_na["significant"] == True  # noqa: E712
+
     def test_output_csv(self, tmp_path):
         """Test that results CSV is written correctly."""
         from scripts.statistical_tests import pairwise_defence_tests
