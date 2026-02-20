@@ -138,7 +138,7 @@ class EnsembleModel(BaseModel):
         checkpoint = {
             "lr_model": self.lr_model,
             "xgb_model": self.xgb_model,
-            "mlp_state_dict": self.mlp.state_dict(),
+            "mlp_state_dict": {k: v.cpu() for k, v in self.mlp.state_dict().items()},
             "mlp_config": {
                 "input_dim": self.mlp.fc1.in_features,
                 "hidden_dim": self.mlp_hidden_dim,
@@ -161,7 +161,8 @@ class EnsembleModel(BaseModel):
         instance.mlp = SimpleMLP(
             cfg["input_dim"], cfg["hidden_dim"], cfg["use_sigmoid"]
         ).to(instance.device)
-        instance.mlp.load_state_dict(data["mlp_state_dict"])
+        state_dict = {k: v.to(instance.device) for k, v in data["mlp_state_dict"].items()}
+        instance.mlp.load_state_dict(state_dict)
         instance.mlp.eval()
         instance.model = instance.mlp
         instance._use_logits = data.get("_use_logits", False)

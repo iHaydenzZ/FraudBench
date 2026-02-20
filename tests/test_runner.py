@@ -1,5 +1,7 @@
 """Tests for the experiment runner CLI."""
 
+import pytest
+
 from runner.run import load_config, build_parser
 
 
@@ -41,3 +43,57 @@ class TestSeedOverride:
         config["seed"] = seed_override
 
         assert config["seed"] == 456
+
+
+class TestModelDispatch:
+    """Tests for model type dispatch in the runner."""
+
+    def test_ensemble_config_loads(self, tmp_path):
+        """Runner accepts model.type == 'ensemble' in config."""
+        config_file = tmp_path / "ensemble.yaml"
+        config_file.write_text(
+            "experiment_name: test_ensemble\n"
+            "seed: 42\n"
+            "dataset:\n"
+            "  name: ccfd\n"
+            "model:\n"
+            "  type: ensemble\n"
+            "  params:\n"
+            "    epochs: 1\n"
+            "    hidden_dim: 8\n"
+            "attack:\n"
+            "  type: capgd\n"
+            "  epsilon: 0.1\n"
+            "defence:\n"
+            "  type: ensemble\n"
+        )
+        config = load_config(str(config_file))
+        assert config["model"]["type"] == "ensemble"
+
+    def test_ensemble_rejects_adversarial_training(self, tmp_path):
+        """Runner raises ValueError for ensemble + adversarial_training."""
+        import subprocess
+        import sys
+
+        config_file = tmp_path / "bad.yaml"
+        config_file.write_text(
+            "experiment_name: test_bad\n"
+            "seed: 42\n"
+            "dataset:\n"
+            "  name: ccfd\n"
+            "model:\n"
+            "  type: ensemble\n"
+            "  params:\n"
+            "    epochs: 1\n"
+            "attack:\n"
+            "  type: capgd\n"
+            "  epsilon: 0.1\n"
+            "defence:\n"
+            "  type: adversarial_training\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-m", "runner.run", "--config", str(config_file)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0
+        assert "not supported for ensemble" in result.stderr

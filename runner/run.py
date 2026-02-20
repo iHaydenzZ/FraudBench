@@ -96,9 +96,9 @@ def main():
 
     # Check for Adversarial Training Defence
     defence_config = config.get("defence", {})
-    if defence_config.get("type") == "adversarial_training" and model_type == "tree":
+    if defence_config.get("type") == "adversarial_training" and model_type in ("tree", "ensemble"):
         raise ValueError(
-            "Adversarial training is not supported for tree models. "
+            f"Adversarial training is not supported for {model_type} models. "
             "Use defence.type: 'input_validation' or 'none' instead."
         )
     if defence_config.get("type") == "adversarial_training":
