@@ -183,21 +183,23 @@ def print_summary(results: pd.DataFrame) -> None:
         print(f"\n--- {dataset} / {model_type} ---")
         for _, row in grp.iterrows():
             label = f"  {row['defence_a']} vs {row['defence_b']}"
-            if row["note"]:
+            if np.isnan(row["p_value"]):
                 print(f"{label}: SKIPPED ({row['note']})")
                 continue
 
             sig = "*" if row["significant"] else " "
+            annotation = f"  [{row['note']}]" if row["note"] else ""
             print(
                 f"{label}: "
                 f"mean_diff={row['mean_diff']:+.4f}  "
                 f"t={row['t_statistic']:.3f}  "
                 f"p={row['p_value']:.4f} {sig} "
                 f"d={row['cohens_d']:.3f}"
+                f"{annotation}"
             )
 
     # Summary counts
-    testable = results[results["note"] == ""]
+    testable = results[results["p_value"].notna()]
     n_sig = testable["significant"].sum()
     n_total = len(testable)
     print(f"\n{n_sig}/{n_total} comparisons significant at p < 0.05")
