@@ -378,8 +378,10 @@ Results are logged to `results/registry.csv`. Use `results/registry_clean.csv` (
 ## Known Limitations
 
 - **Adversarial training + tree/ensemble models**: Adversarial training requires gradients (backpropagation) and is incompatible with tree and ensemble models. The runner raises `ValueError` for these combinations.
-- **CAPGD + tree models**: CAPGD is a gradient-based (white-box) attack and only works on neural models. For ensemble models, CAPGD targets the MLP component. Use HopSkipJump or Square Attack for tree-only models.
+- **CAPGD + tree models**: CAPGD is a gradient-based (white-box) attack and only works on neural models. For ensemble models, CAPGD targets the MLP component. Use HopSkipJump or Square Attack for tree-only models. In the registry, tree + CAPGD rows show `robust_pr_auc == clean_pr_auc` — this reflects the architectural limitation, not model robustness.
 - **Ensemble GPU requirement**: All ensemble experiments require GPU for the MLP training component, even when using black-box attacks (Square, HSJ).
+- **HopSkipJump partial coverage**: HSJ experiments are partially complete (6/12 runs). Missing: IEEE-CIS seed 456, LCLD seeds 123 and 456, Sparkov all 3 seeds. Square Attack provides complete black-box coverage. HSJ completion is listed as future work.
+- **Sparkov neural vulnerability**: The neural model achieves near-zero robust PR-AUC on Sparkov under CAPGD attack (even at small ε). This reflects extreme vulnerability in a low-dimensional feature space (22 features), not a bug. Tree models achieve robust PR-AUC ≈ 0.747 on the same dataset.
 
 ## License
 
