@@ -180,6 +180,12 @@ def plot_summary_table(df: pd.DataFrame, output_dir: str):
                 r[label] = "n/a"
         rows.append(r)
 
+    # Annotate tree + CAPGD rows where robust == clean (attack is a no-op)
+    for r in rows:
+        if r.get("model_type") == "tree" and r.get("attack_type") == "capgd":
+            if "robust_pr_auc" in r and r["robust_pr_auc"] != "n/a":
+                r["robust_pr_auc"] = r["robust_pr_auc"] + " †"
+
     summary_df = pd.DataFrame(rows)
     csv_path = os.path.join(output_dir, "summary_table.csv")
     summary_df.to_csv(csv_path, index=False)
@@ -197,7 +203,7 @@ def plot_summary_table(df: pd.DataFrame, output_dir: str):
     table.auto_set_font_size(False)
     table.set_fontsize(7)
     table.scale(1, 1.3)
-    fig.suptitle("Cross-Dataset Summary", fontsize=12)
+    fig.suptitle("Cross-Dataset Summary\n† CAPGD is inapplicable to tree models (gradient-based attack)", fontsize=12)
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, "summary_table.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
