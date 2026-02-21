@@ -34,7 +34,9 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
     For each (dataset, model_type) combination, compares robust_pr_auc
     across seeds for every pair of defence types.
 
-    Returns a DataFrame with one row per comparison.
+    Special handling: ensemble (model_type='ensemble', defence_type='ensemble')
+    is compared against neural 'none' baseline via cross-model pairing on
+    (dataset, attack_type, attack_epsilon, seed).
     """
     pairs = [
         ("none", "adversarial_training"),
@@ -45,23 +47,56 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
         ("input_validation", "ensemble"),
     ]
 
+    # Detect whether the registry contains actual ensemble model_type data
+    has_ensemble_model = (df["model_type"] == "ensemble").any()
+
     rows = []
 
     for (dataset, model_type), grp in df.groupby(["dataset", "model_type"]):
         for def_a, def_b in pairs:
-            df_a = grp[grp["defence_type"] == def_a][["seed", "robust_pr_auc"]].dropna()
-            df_b = grp[grp["defence_type"] == def_b][["seed", "robust_pr_auc"]].dropna()
+            is_cross_model = False
 
-            # Inner join on seed to ensure correct pairing
-            paired = df_a.merge(df_b, on="seed", suffixes=("_a", "_b"))
+            if def_b == "ensemble" and has_ensemble_model and model_type != "ensemble":
+                # Only pair from neural to avoid duplicate ensemble comparisons
+                if model_type != "neural":
+                    continue
+
+                # Cross-model pairing: neural def_a vs ensemble data
+                df_a = grp[grp["defence_type"] == def_a][
+                    ["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]
+                ].dropna()
+                ens_data = df[
+                    (df["dataset"] == dataset)
+                    & (df["model_type"] == "ensemble")
+                    & (df["defence_type"] == "ensemble")
+                ][["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]].dropna()
+
+                paired = df_a.merge(
+                    ens_data,
+                    on=["seed", "attack_type", "attack_epsilon"],
+                    suffixes=("_a", "_b"),
+                )
+                is_cross_model = True
+                n_a = len(df_a)
+                n_b = len(ens_data)
+            elif model_type == "ensemble" and has_ensemble_model:
+                # Skip within-ensemble comparisons (handled via cross-model from neural)
+                continue
+            else:
+                # Standard same-model pairing
+                df_a = grp[grp["defence_type"] == def_a][["seed", "robust_pr_auc"]].dropna()
+                df_b = grp[grp["defence_type"] == def_b][["seed", "robust_pr_auc"]].dropna()
+                paired = df_a.merge(df_b, on="seed", suffixes=("_a", "_b"))
+                n_a = len(df_a)
+                n_b = len(df_b)
 
             row = {
                 "dataset": dataset,
-                "model_type": model_type,
+                "model_type": "ensemble" if is_cross_model else model_type,
                 "defence_a": def_a,
                 "defence_b": def_b,
-                "n_a": len(df_a),
-                "n_b": len(df_b),
+                "n_a": n_a,
+                "n_b": n_b,
             }
 
             # Need at least 3 paired observations for a meaningful t-test
@@ -69,8 +104,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
             if n_paired < 3:
                 row.update(
                     {
-                        "mean_a": float(df_a["robust_pr_auc"].mean()) if len(df_a) > 0 else np.nan,
-                        "mean_b": float(df_b["robust_pr_auc"].mean()) if len(df_b) > 0 else np.nan,
+                        "mean_a": float(paired["robust_pr_auc_a"].mean()) if n_paired > 0 else np.nan,
+                        "mean_b": float(paired["robust_pr_auc_b"].mean()) if n_paired > 0 else np.nan,
                         "mean_diff": np.nan,
                         "t_statistic": np.nan,
                         "p_value": np.nan,
@@ -117,6 +152,8 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
             else:
                 w_stat, w_pval = np.nan, np.nan
 
+            note = "cross-model: ensemble vs neural baseline" if is_cross_model else ""
+
             row.update(
                 {
                     "mean_a": float(np.mean(a)),
@@ -128,7 +165,7 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                     "w_p_value": float(w_pval) if not np.isnan(w_pval) else np.nan,
                     "cohens_d": float(d),
                     "significant": bool(p_val < 0.05),
-                    "note": "",
+                    "note": note,
                 }
             )
             rows.append(row)

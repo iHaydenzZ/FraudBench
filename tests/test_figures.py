@@ -533,3 +533,68 @@ class TestPlotDefenceHeatmap:
         # Should be exactly 1 row (at eps=0.1), not 3 from many-to-many
         assert len(defended) == 1, f"Expected 1 row, got {len(defended)} (many-to-many join?)"
         plt.close("all")
+
+
+class TestStatisticalTestsEnsemble:
+    """Tests for ensemble cross-model statistical comparisons."""
+
+    def test_ensemble_vs_neural_baseline_produces_valid_pvalues(self):
+        """Ensemble should be compared against neural 'none' baseline."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        rows = []
+        # Neural baseline (none)
+        for seed in [42, 123, 456]:
+            rows.append({
+                "seed": seed, "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "none", "attack_type": "capgd",
+                "attack_epsilon": 0.1,
+                "robust_pr_auc": 0.60 + seed * 0.0001,
+            })
+        # Ensemble
+        for seed in [42, 123, 456]:
+            rows.append({
+                "seed": seed, "dataset": "ccfd", "model_type": "ensemble",
+                "defence_type": "ensemble", "attack_type": "capgd",
+                "attack_epsilon": 0.1,
+                "robust_pr_auc": 0.75 + seed * 0.0001,
+            })
+        df = pd.DataFrame(rows)
+        results = pairwise_defence_tests(df)
+
+        # Find the none vs ensemble comparison
+        ens_row = results[
+            (results["defence_a"] == "none")
+            & (results["defence_b"] == "ensemble")
+        ]
+        assert len(ens_row) >= 1
+        row = ens_row.iloc[0]
+        assert "insufficient" not in str(row.get("note", ""))
+        assert not np.isnan(row["p_value"])
+
+    def test_ensemble_comparison_note_indicates_cross_model(self):
+        """Cross-model ensemble comparisons should be annotated."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        rows = []
+        for seed in [42, 123, 456]:
+            rows.append({
+                "seed": seed, "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "none", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "robust_pr_auc": 0.60,
+            })
+            rows.append({
+                "seed": seed, "dataset": "ccfd", "model_type": "ensemble",
+                "defence_type": "ensemble", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "robust_pr_auc": 0.75,
+            })
+        df = pd.DataFrame(rows)
+        results = pairwise_defence_tests(df)
+
+        ens_row = results[
+            (results["defence_a"] == "none")
+            & (results["defence_b"] == "ensemble")
+        ]
+        assert len(ens_row) >= 1
+        row = ens_row.iloc[0]
+        assert "cross-model" in str(row.get("note", "")).lower() or row["model_type"] == "ensemble"
