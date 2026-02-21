@@ -1,25 +1,73 @@
-dataset,model_type,defence_a,defence_b,n_a,n_b,mean_a,mean_b,mean_diff,t_statistic,p_value,cohens_d,significant,note
-ccfd,neural,none,adversarial_training,3,3,0.5961,0.6378,-0.04170000000000007,-0.8979953312014032,0.4639569961805565,-0.6186426149824859,False,
-ccfd,neural,none,input_validation,3,3,0.5961,0.15453333333333333,0.44156666666666666,5.973833030100316,0.026896278154088755,5.009026273418608,True,
-ccfd,neural,adversarial_training,input_validation,3,3,0.6378,0.15453333333333333,0.48326666666666673,9.055060364242241,0.011977323692983632,8.17154450729721,True,
-ccfd,tree,none,adversarial_training,3,0,0.8511000000000001,,,,,,False,insufficient paired data (n=0)
-ccfd,tree,none,input_validation,3,3,0.8511000000000001,0.7046666666666667,0.14643333333333342,2.2394185096489054,0.15448450194699925,1.434871425854628,False,
-ccfd,tree,adversarial_training,input_validation,0,3,,0.7046666666666667,,,,,False,insufficient paired data (n=0)
-ieee_cis,neural,none,adversarial_training,3,3,0.0776,0.27440000000000003,-0.19680000000000003,-14.373006489724379,0.004805795145869925,-8.058538343983274,True,
-ieee_cis,neural,none,input_validation,3,3,0.0776,0.01846666666666667,0.05913333333333333,9.993295756654403,0.009865485926266347,8.110228060108195,True,
-ieee_cis,neural,adversarial_training,input_validation,3,3,0.27440000000000003,0.01846666666666667,0.25593333333333335,13.517040033529025,0.005428616101452766,10.979797849031906,True,
-ieee_cis,tree,none,adversarial_training,3,0,0.5659666666666667,,,,,,False,insufficient paired data (n=0)
-ieee_cis,tree,none,input_validation,3,3,0.5659666666666667,0.5378,0.028166666666666784,5.492226082054807,0.031589065843740695,1.7541354087473158,True,
-ieee_cis,tree,adversarial_training,input_validation,0,3,,0.5378,,,,,False,insufficient paired data (n=0)
-lcld,neural,none,adversarial_training,3,3,0.10510000000000001,0.2981666666666667,-0.19306666666666666,-47.980964292047496,0.0004340894196342899,-39.17629329407208,True,
-lcld,neural,none,input_validation,3,3,0.10510000000000001,0.10510000000000001,0.0,0.0,1.0,0.0,False,identical values across seeds
-lcld,neural,adversarial_training,input_validation,3,3,0.2981666666666667,0.10510000000000001,0.19306666666666666,47.980964292047496,0.0004340894196342899,39.17629329407208,True,
-lcld,tree,none,adversarial_training,3,0,0.36833333333333335,,,,,,False,insufficient paired data (n=0)
-lcld,tree,none,input_validation,3,3,0.36833333333333335,0.3669,0.001433333333333342,4.236915896106575,0.051444945721350444,0.3025656679363838,False,
-lcld,tree,adversarial_training,input_validation,0,3,,0.3669,,,,,False,insufficient paired data (n=0)
-sparkov,neural,none,adversarial_training,3,3,0.0056,0.21513333333333332,-0.20953333333333332,-18.46692117577743,0.0029194825959165107,-15.456175098960264,True,
-sparkov,neural,none,input_validation,3,3,0.0056,0.005299999999999999,0.0003000000000000008,0.9819805060619655,0.42964817452797,0.8017837257372754,False,
-sparkov,neural,adversarial_training,input_validation,3,3,0.21513333333333332,0.005299999999999999,0.20983333333333332,18.998369050480477,0.00275909764553407,15.48378180676628,True,
-sparkov,tree,none,adversarial_training,3,0,0.7467,,,,,,False,insufficient paired data (n=0)
-sparkov,tree,none,input_validation,3,3,0.7467,0.23153333333333334,0.5151666666666667,43.898279138554294,0.0005185219188071847,26.530087589398942,True,
-sparkov,tree,adversarial_training,input_validation,0,3,,0.23153333333333334,,,,,False,insufficient paired data (n=0)
+dataset,model_type,defence_a,defence_b,n_a,n_b,mean_a,mean_b,mean_diff,t_statistic,p_value,w_statistic,w_p_value,cohens_d,significant,note
+ccfd,ensemble,none,adversarial_training,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ccfd,ensemble,none,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ccfd,ensemble,none,ensemble,0,6,,0.7623000000000001,,,,,,,False,insufficient paired data (n=0)
+ccfd,ensemble,adversarial_training,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ccfd,ensemble,adversarial_training,ensemble,0,6,,0.7623000000000001,,,,,,,False,insufficient paired data (n=0)
+ccfd,ensemble,input_validation,ensemble,0,6,,0.7623000000000001,,,,,,,False,insufficient paired data (n=0)
+ccfd,neural,none,adversarial_training,21,3,0.5345142857142858,0.6514333333333332,-0.11691904761904737,-3.585061531626588,0.001851470923373106,33.0,0.002857208251953125,-1.0774050517167348,True,
+ccfd,neural,none,input_validation,21,5,0.537417142857143,0.4223,0.11511714285714303,2.693809270277363,0.010891834897781194,173.0,0.019122868834529072,0.657612302779142,True,
+ccfd,neural,none,ensemble,21,0,0.5345142857142858,,,,,,,,False,insufficient paired data (n=0)
+ccfd,neural,adversarial_training,input_validation,3,5,0.6530199999999999,0.4223,0.23071999999999993,2.2131425151789745,0.09130614834495987,,,1.4680511086067023,False,
+ccfd,neural,adversarial_training,ensemble,3,0,0.6514333333333333,,,,,,,,False,insufficient paired data (n=0)
+ccfd,neural,input_validation,ensemble,5,0,0.4223,,,,,,,,False,insufficient paired data (n=0)
+ccfd,tree,none,adversarial_training,9,0,0.5432,,,,,,,,False,insufficient paired data (n=0)
+ccfd,tree,none,input_validation,9,5,0.5729466666666666,0.76796,-0.19501333333333337,-1.6939979331893067,0.1123862039380101,28.0,0.2210479467951486,-0.615171802531981,False,
+ccfd,tree,none,ensemble,9,0,0.5432,,,,,,,,False,insufficient paired data (n=0)
+ccfd,tree,adversarial_training,input_validation,0,5,,0.7679599999999999,,,,,,,False,insufficient paired data (n=0)
+ccfd,tree,adversarial_training,ensemble,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ccfd,tree,input_validation,ensemble,5,0,0.7679599999999999,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,none,adversarial_training,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,none,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,none,ensemble,0,6,,0.05131666666666667,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,adversarial_training,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,adversarial_training,ensemble,0,6,,0.05131666666666667,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,ensemble,input_validation,ensemble,0,6,,0.05131666666666667,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,neural,none,adversarial_training,21,3,0.09172380952380953,0.2792666666666667,-0.18754285714285718,-9.178085298030968,1.3114467870147911e-08,4.0,6.67572021484375e-06,-2.853737837085743,True,
+ieee_cis,neural,none,input_validation,21,3,0.09172380952380953,0.0182,0.07352380952380952,3.8829801188454596,0.000924821461095517,0.0,9.5367431640625e-07,1.1983136803481123,True,
+ieee_cis,neural,none,ensemble,21,0,0.09172380952380953,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,neural,adversarial_training,input_validation,3,3,0.2792666666666666,0.0182,0.2610666666666666,11.36217372106836,0.007657139626511492,,,9.277175995159174,True,
+ieee_cis,neural,adversarial_training,ensemble,3,0,0.2792666666666666,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,neural,input_validation,ensemble,3,0,0.0182,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,tree,none,adversarial_training,8,0,0.24477500000000002,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,tree,none,input_validation,8,3,0.24477500000000002,0.5378875,-0.29311249999999994,-3.106162088424264,0.01717330992257829,6.0,0.109375,-1.5502693533819702,True,
+ieee_cis,tree,none,ensemble,8,0,0.24477500000000002,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,tree,adversarial_training,input_validation,0,3,,0.5378,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,tree,adversarial_training,ensemble,0,0,,,,,,,,,False,insufficient paired data (n=0)
+ieee_cis,tree,input_validation,ensemble,3,0,0.5378,,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,none,adversarial_training,0,0,,,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,none,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,none,ensemble,0,6,,0.12643333333333334,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,adversarial_training,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,adversarial_training,ensemble,0,6,,0.12643333333333334,,,,,,,False,insufficient paired data (n=0)
+lcld,ensemble,input_validation,ensemble,0,6,,0.12643333333333334,,,,,,,False,insufficient paired data (n=0)
+lcld,neural,none,adversarial_training,21,3,0.11474761904761907,0.3010333333333333,-0.18628571428571425,-35.137042957586466,1.880940990603109e-19,0.0,5.5111435495130566e-05,-10.81904247748712,True,
+lcld,neural,none,input_validation,21,3,0.11474761904761907,0.1051,0.009647619047619072,1.835844036890768,0.08129436998346977,0.0,0.027281171477617997,0.5665537698003529,False,
+lcld,neural,none,ensemble,21,0,0.11474761904761907,,,,,,,,False,insufficient paired data (n=0)
+lcld,neural,adversarial_training,input_validation,3,3,0.3010333333333333,0.10510000000000001,0.1959333333333333,78.76639568296193,0.00016114360266645958,,,64.3124927671388,True,
+lcld,neural,adversarial_training,ensemble,3,0,0.3010333333333333,,,,,,,,False,insufficient paired data (n=0)
+lcld,neural,input_validation,ensemble,3,0,0.10510000000000001,,,,,,,,False,insufficient paired data (n=0)
+lcld,tree,none,adversarial_training,7,0,0.2666285714285715,,,,,,,,False,insufficient paired data (n=0)
+lcld,tree,none,input_validation,7,3,0.2666285714285715,0.36624285714285715,-0.09961428571428566,-2.7676353478131235,0.03252396879312728,6.0,0.21875,-1.4657407379791334,True,
+lcld,tree,none,ensemble,7,0,0.2666285714285715,,,,,,,,False,insufficient paired data (n=0)
+lcld,tree,adversarial_training,input_validation,0,3,,0.3669,,,,,,,False,insufficient paired data (n=0)
+lcld,tree,adversarial_training,ensemble,0,0,,,,,,,,,False,insufficient paired data (n=0)
+lcld,tree,input_validation,ensemble,3,0,0.3669,,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,none,adversarial_training,0,0,,,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,none,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,none,ensemble,0,6,,0.08361666666666667,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,adversarial_training,input_validation,0,0,,,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,adversarial_training,ensemble,0,6,,0.08361666666666667,,,,,,,False,insufficient paired data (n=0)
+sparkov,ensemble,input_validation,ensemble,0,6,,0.08361666666666667,,,,,,,False,insufficient paired data (n=0)
+sparkov,neural,none,adversarial_training,21,3,0.031071428571428566,0.20973333333333333,-0.17866190476190477,-11.443322007459052,3.1323702476430313e-10,2.0,7.783696684662389e-05,-3.561856742965066,True,
+sparkov,neural,none,input_validation,21,5,0.03352285714285715,0.00514,0.028382857142857154,2.3143406301669547,0.026822058219113105,98.0,0.3526270705950356,0.5529326585644488,True,
+sparkov,neural,none,ensemble,21,0,0.031071428571428566,,,,,,,,False,insufficient paired data (n=0)
+sparkov,neural,adversarial_training,input_validation,3,5,0.19908,0.0051400000000000005,0.19394,18.407837501002955,5.1244069026094844e-05,,,11.727048625712934,True,
+sparkov,neural,adversarial_training,ensemble,3,0,0.20973333333333333,,,,,,,,False,insufficient paired data (n=0)
+sparkov,neural,input_validation,ensemble,5,0,0.0051400000000000005,,,,,,,,False,insufficient paired data (n=0)
+sparkov,tree,none,adversarial_training,6,0,0.43545000000000006,,,,,,,,False,insufficient paired data (n=0)
+sparkov,tree,none,input_validation,6,5,0.42765,0.43772,-0.010070000000000023,-0.07202495580366026,0.9441572477609158,26.0,0.921875,-0.03274233042918065,False,
+sparkov,tree,none,ensemble,6,0,0.43545000000000006,,,,,,,,False,insufficient paired data (n=0)
+sparkov,tree,adversarial_training,input_validation,0,5,,0.43772,,,,,,,False,insufficient paired data (n=0)
+sparkov,tree,adversarial_training,ensemble,0,0,,,,,,,,,False,insufficient paired data (n=0)
+sparkov,tree,input_validation,ensemble,5,0,0.43772,,,,,,,,False,insufficient paired data (n=0)
