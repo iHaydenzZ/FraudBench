@@ -66,9 +66,7 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                     ["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]
                 ].dropna()
                 ens_data = df[
-                    (df["dataset"] == dataset)
-                    & (df["model_type"] == "ensemble")
-                    & (df["defence_type"] == "ensemble")
+                    (df["dataset"] == dataset) & (df["model_type"] == "ensemble") & (df["defence_type"] == "ensemble")
                 ][["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]].dropna()
 
                 paired = df_a.merge(

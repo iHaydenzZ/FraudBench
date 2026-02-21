@@ -238,9 +238,7 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
     ].copy()
     neural_baseline = neural_baseline.rename(columns={"baseline_robust": "neural_baseline_robust"})
 
-    merged = merged.merge(
-        neural_baseline, on=["dataset", "attack_type", "attack_epsilon"], how="left"
-    )
+    merged = merged.merge(neural_baseline, on=["dataset", "attack_type", "attack_epsilon"], how="left")
 
     # Fill in ensemble rows: use neural baseline where same-model baseline is missing
     is_ensemble = merged["model_type"] == "ensemble"

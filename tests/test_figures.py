@@ -282,31 +282,46 @@ class TestPlotRobustnessCurves:
         # Baseline (none) with multi-epsilon sweep
         for eps in [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]:
             for seed in [42, 123, 456]:
-                rows.append({
-                    "dataset": "ccfd", "model_type": "neural",
-                    "defence_type": "none", "attack_type": "capgd",
-                    "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": max(0.01, 0.85 - eps * 2),
-                    "clean_pr_auc": 0.90,
-                })
+                rows.append(
+                    {
+                        "dataset": "ccfd",
+                        "model_type": "neural",
+                        "defence_type": "none",
+                        "attack_type": "capgd",
+                        "attack_epsilon": eps,
+                        "seed": seed,
+                        "robust_pr_auc": max(0.01, 0.85 - eps * 2),
+                        "clean_pr_auc": 0.90,
+                    }
+                )
         # adversarial_training at eps=0.1 only
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "adversarial_training", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.75,
-                "clean_pr_auc": 0.88,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "adversarial_training",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.75,
+                    "clean_pr_auc": 0.88,
+                }
+            )
         # input_validation at eps=0.1 only
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "input_validation", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.55,
-                "clean_pr_auc": 0.89,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "input_validation",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.55,
+                    "clean_pr_auc": 0.89,
+                }
+            )
         return pd.DataFrame(rows)
 
     def test_single_epsilon_defences_included(self, tmp_path, monkeypatch):
@@ -326,13 +341,15 @@ class TestPlotRobustnessCurves:
 
         # Collect legend labels — should include all 3 defences
         legend_labels = [t.get_text() for t in ax.get_legend().get_texts()]
-        assert any("none" in l for l in legend_labels), f"Missing 'none' in {legend_labels}"
-        assert any("adversarial_training" in l for l in legend_labels), f"Missing 'adversarial_training' in {legend_labels}"
-        assert any("input_validation" in l for l in legend_labels), f"Missing 'input_validation' in {legend_labels}"
+        assert any("none" in lbl for lbl in legend_labels), f"Missing 'none' in {legend_labels}"
+        assert any("adversarial_training" in lbl for lbl in legend_labels), (
+            f"Missing 'adversarial_training' in {legend_labels}"
+        )
+        assert any("input_validation" in lbl for lbl in legend_labels), f"Missing 'input_validation' in {legend_labels}"
 
         # Should have at least 1 line (none baseline) and 2 scatter collections
         lines = ax.get_lines()
-        collections = [c for c in ax.collections if hasattr(c, 'get_offsets') and len(c.get_offsets()) > 0]
+        collections = [c for c in ax.collections if hasattr(c, "get_offsets") and len(c.get_offsets()) > 0]
         assert len(lines) >= 1, "Expected at least 1 line for multi-epsilon defence"
         assert len(collections) >= 2, f"Expected at least 2 scatter collections, got {len(collections)}"
         plt.close("all")
@@ -345,13 +362,26 @@ class TestPlotRobustnessCurves:
         df = self._make_multi_defence_data()
         for eps in [0.01, 0.05, 0.1]:
             for seed in [42, 123, 456]:
-                df = pd.concat([df, pd.DataFrame([{
-                    "dataset": "ccfd", "model_type": "tree",
-                    "defence_type": "none", "attack_type": "capgd",
-                    "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": 0.86,
-                    "clean_pr_auc": 0.86,
-                }])], ignore_index=True)
+                df = pd.concat(
+                    [
+                        df,
+                        pd.DataFrame(
+                            [
+                                {
+                                    "dataset": "ccfd",
+                                    "model_type": "tree",
+                                    "defence_type": "none",
+                                    "attack_type": "capgd",
+                                    "attack_epsilon": eps,
+                                    "seed": seed,
+                                    "robust_pr_auc": 0.86,
+                                    "clean_pr_auc": 0.86,
+                                }
+                            ]
+                        ),
+                    ],
+                    ignore_index=True,
+                )
 
         monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
         plot_robustness_curves(df, str(tmp_path))
@@ -373,12 +403,18 @@ class TestPlotRobustnessBars:
         rows = []
         for eps in [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]:
             for seed in [42, 123, 456]:
-                rows.append({
-                    "dataset": "ccfd", "model_type": "neural",
-                    "defence_type": "none", "attack_type": "capgd",
-                    "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
-                })
+                rows.append(
+                    {
+                        "dataset": "ccfd",
+                        "model_type": "neural",
+                        "defence_type": "none",
+                        "attack_type": "capgd",
+                        "attack_epsilon": eps,
+                        "seed": seed,
+                        "robust_pr_auc": 0.65,
+                        "clean_pr_auc": 0.85,
+                    }
+                )
         df = pd.DataFrame(rows)
 
         monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
@@ -388,7 +424,7 @@ class TestPlotRobustnessBars:
         fig = plt.gcf()
         ax = fig.axes[0]
         # 2 bars per group (clean + robust), 1 group → 2 bars total
-        bars = [p for p in ax.patches if hasattr(p, 'get_height') and p.get_height() > 0]
+        bars = [p for p in ax.patches if hasattr(p, "get_height") and p.get_height() > 0]
         assert len(bars) == 2, f"Expected 2 bars (1 group × 2 metrics), got {len(bars)}"
         plt.close("all")
 
@@ -401,12 +437,18 @@ class TestPlotRobustnessBars:
         for model in ["neural", "tree"]:
             for defence in ["none", "adversarial_training"]:
                 for seed in [42, 123, 456]:
-                    rows.append({
-                        "dataset": "ccfd", "model_type": model,
-                        "defence_type": defence, "attack_type": "capgd",
-                        "attack_epsilon": 0.1, "seed": seed,
-                        "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
-                    })
+                    rows.append(
+                        {
+                            "dataset": "ccfd",
+                            "model_type": model,
+                            "defence_type": defence,
+                            "attack_type": "capgd",
+                            "attack_epsilon": 0.1,
+                            "seed": seed,
+                            "robust_pr_auc": 0.65,
+                            "clean_pr_auc": 0.85,
+                        }
+                    )
         df = pd.DataFrame(rows)
 
         monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
@@ -432,28 +474,46 @@ class TestPlotDefenceHeatmap:
         rows = []
         # neural baseline (none)
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "none", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.65,
+                    "clean_pr_auc": 0.85,
+                }
+            )
         # adversarial_training (neural)
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "adversarial_training", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.75, "clean_pr_auc": 0.83,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "adversarial_training",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.75,
+                    "clean_pr_auc": 0.83,
+                }
+            )
         # ensemble (model_type=ensemble, defence_type=ensemble)
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "ensemble",
-                "defence_type": "ensemble", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.72, "clean_pr_auc": 0.87,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "ensemble",
+                    "defence_type": "ensemble",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.72,
+                    "clean_pr_auc": 0.87,
+                }
+            )
         return pd.DataFrame(rows)
 
     def test_ensemble_column_present(self, tmp_path):
@@ -475,6 +535,7 @@ class TestPlotDefenceHeatmap:
 
         # Now test the full function produces a file with ensemble
         from scripts.generate_figures import plot_defence_heatmap
+
         plot_defence_heatmap(df, str(tmp_path))
         assert (tmp_path / "defence_heatmap.png").exists()
 
@@ -498,27 +559,39 @@ class TestPlotDefenceHeatmap:
 
     def test_multi_epsilon_baseline_no_duplication(self, tmp_path):
         """Multi-epsilon baseline should not produce many-to-many join."""
-        from scripts.generate_figures import aggregate_seeds, plot_defence_heatmap
+        from scripts.generate_figures import aggregate_seeds
         import matplotlib.pyplot as plt
 
         rows = []
         # neural baseline at multiple epsilons
         for eps in [0.05, 0.1, 0.2]:
             for seed in [42, 123, 456]:
-                rows.append({
-                    "dataset": "ccfd", "model_type": "neural",
-                    "defence_type": "none", "attack_type": "capgd",
-                    "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": 0.80 - eps, "clean_pr_auc": 0.90,
-                })
+                rows.append(
+                    {
+                        "dataset": "ccfd",
+                        "model_type": "neural",
+                        "defence_type": "none",
+                        "attack_type": "capgd",
+                        "attack_epsilon": eps,
+                        "seed": seed,
+                        "robust_pr_auc": 0.80 - eps,
+                        "clean_pr_auc": 0.90,
+                    }
+                )
         # adversarial_training at eps=0.1 only
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "adversarial_training", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.75, "clean_pr_auc": 0.88,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "adversarial_training",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.75,
+                    "clean_pr_auc": 0.88,
+                }
+            )
 
         df = pd.DataFrame(rows)
         agg = aggregate_seeds(df)
@@ -545,28 +618,35 @@ class TestStatisticalTestsEnsemble:
         rows = []
         # Neural baseline (none)
         for seed in [42, 123, 456]:
-            rows.append({
-                "seed": seed, "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "none", "attack_type": "capgd",
-                "attack_epsilon": 0.1,
-                "robust_pr_auc": 0.60 + seed * 0.0001,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.60 + seed * 0.0001,
+                }
+            )
         # Ensemble
         for seed in [42, 123, 456]:
-            rows.append({
-                "seed": seed, "dataset": "ccfd", "model_type": "ensemble",
-                "defence_type": "ensemble", "attack_type": "capgd",
-                "attack_epsilon": 0.1,
-                "robust_pr_auc": 0.75 + seed * 0.0001,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "ensemble",
+                    "defence_type": "ensemble",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.75 + seed * 0.0001,
+                }
+            )
         df = pd.DataFrame(rows)
         results = pairwise_defence_tests(df)
 
         # Find the none vs ensemble comparison
-        ens_row = results[
-            (results["defence_a"] == "none")
-            & (results["defence_b"] == "ensemble")
-        ]
+        ens_row = results[(results["defence_a"] == "none") & (results["defence_b"] == "ensemble")]
         assert len(ens_row) >= 1
         row = ens_row.iloc[0]
         assert "insufficient" not in str(row.get("note", ""))
@@ -578,23 +658,32 @@ class TestStatisticalTestsEnsemble:
 
         rows = []
         for seed in [42, 123, 456]:
-            rows.append({
-                "seed": seed, "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "none", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "robust_pr_auc": 0.60,
-            })
-            rows.append({
-                "seed": seed, "dataset": "ccfd", "model_type": "ensemble",
-                "defence_type": "ensemble", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "robust_pr_auc": 0.75,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.60,
+                }
+            )
+            rows.append(
+                {
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "ensemble",
+                    "defence_type": "ensemble",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.75,
+                }
+            )
         df = pd.DataFrame(rows)
         results = pairwise_defence_tests(df)
 
-        ens_row = results[
-            (results["defence_a"] == "none")
-            & (results["defence_b"] == "ensemble")
-        ]
+        ens_row = results[(results["defence_a"] == "none") & (results["defence_b"] == "ensemble")]
         assert len(ens_row) >= 1
         row = ens_row.iloc[0]
         assert "cross-model" in str(row.get("note", "")).lower() or row["model_type"] == "ensemble"
@@ -611,22 +700,36 @@ class TestInputValidationAnalysis:
         # Baseline at multiple epsilons
         for eps in [0.05, 0.1, 0.2]:
             for seed in [42, 123, 456]:
-                rows.append({
-                    "dataset": "ccfd", "model_type": "neural",
-                    "defence_type": "none", "attack_type": "capgd",
-                    "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": 0.80 - eps, "clean_pr_auc": 0.90,
-                    "robust_f1": 0.70 - eps, "robust_recall": 0.60 - eps,
-                })
+                rows.append(
+                    {
+                        "dataset": "ccfd",
+                        "model_type": "neural",
+                        "defence_type": "none",
+                        "attack_type": "capgd",
+                        "attack_epsilon": eps,
+                        "seed": seed,
+                        "robust_pr_auc": 0.80 - eps,
+                        "clean_pr_auc": 0.90,
+                        "robust_f1": 0.70 - eps,
+                        "robust_recall": 0.60 - eps,
+                    }
+                )
         # input_validation at eps=0.1 only
         for seed in [42, 123, 456]:
-            rows.append({
-                "dataset": "ccfd", "model_type": "neural",
-                "defence_type": "input_validation", "attack_type": "capgd",
-                "attack_epsilon": 0.1, "seed": seed,
-                "robust_pr_auc": 0.55, "clean_pr_auc": 0.89,
-                "robust_f1": 0.50, "robust_recall": 0.45,
-            })
+            rows.append(
+                {
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "input_validation",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "seed": seed,
+                    "robust_pr_auc": 0.55,
+                    "clean_pr_auc": 0.89,
+                    "robust_f1": 0.50,
+                    "robust_recall": 0.45,
+                }
+            )
         df = pd.DataFrame(rows)
         agg = aggregate_seeds(df)
         deg = compute_degradation(agg)
