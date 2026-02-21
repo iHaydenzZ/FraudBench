@@ -346,3 +346,45 @@ class TestPlotRobustnessCurves:
 
         plot_robustness_curves(df, str(tmp_path))
         assert (tmp_path / "robustness_curves.png").exists()
+
+
+class TestPlotRobustnessBars:
+    """Tests for robustness bars figure generation."""
+
+    def test_filters_to_canonical_epsilon(self, tmp_path):
+        """Bar chart should only show ε=0.1 data."""
+        from scripts.generate_figures import aggregate_seeds
+
+        rows = []
+        for eps in [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]:
+            for seed in [42, 123, 456]:
+                rows.append({
+                    "dataset": "ccfd", "model_type": "neural",
+                    "defence_type": "none", "attack_type": "capgd",
+                    "attack_epsilon": eps, "seed": seed,
+                    "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
+                })
+        df = pd.DataFrame(rows)
+        agg = aggregate_seeds(df)
+
+        # After fix: filtering to eps=0.1 should leave 1 row for this config
+        filtered = agg[np.isclose(agg["attack_epsilon"], 0.1)]
+        assert len(filtered) == 1
+
+    def test_bar_labels_include_model_type(self, tmp_path):
+        """Bar labels should include model_type for disambiguation."""
+        from scripts.generate_figures import plot_robustness_bars
+
+        rows = []
+        for model in ["neural", "tree"]:
+            for defence in ["none", "adversarial_training"]:
+                for seed in [42, 123, 456]:
+                    rows.append({
+                        "dataset": "ccfd", "model_type": model,
+                        "defence_type": defence, "attack_type": "capgd",
+                        "attack_epsilon": 0.1, "seed": seed,
+                        "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
+                    })
+        df = pd.DataFrame(rows)
+        plot_robustness_bars(df, str(tmp_path))
+        assert (tmp_path / "robustness_bars.png").exists()

@@ -70,15 +70,20 @@ def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
 def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
     """
     Figure 1: Clean vs Robust PR-AUC per defence, per dataset (2x2 subplots).
+
+    Filters to ε=0.1 only (canonical epsilon). Groups bars by model_type
+    using colour coding.
     """
     agg = aggregate_seeds(df)
     # Filter to rows that have robust metrics
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
+    # Filter to canonical epsilon only
+    agg = agg[np.isclose(agg["attack_epsilon"], 0.1)]
 
     datasets = sorted(agg["dataset"].unique())
     n = len(datasets)
     if n == 0:
-        print("  Skipping robustness_bars: no robust data available.")
+        print("  Skipping robustness_bars: no robust data available at ε=0.1.")
         return
 
     ncols = min(n, 2)
@@ -88,7 +93,7 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
     for idx, dataset in enumerate(datasets):
         ax = axes[idx // ncols][idx % ncols]
         sub = agg[agg["dataset"] == dataset].copy()
-        sub["label"] = sub["defence_type"] + " / " + sub["attack_type"]
+        sub["label"] = sub["model_type"] + " / " + sub["defence_type"]
 
         x = np.arange(len(sub))
         width = 0.35
@@ -109,7 +114,7 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
             capsize=3,
         )
         ax.set_ylabel("PR-AUC")
-        ax.set_title(dataset.upper())
+        ax.set_title(f"{dataset.upper()} (ε=0.1)")
         ax.set_xticks(x)
         ax.set_xticklabels(sub["label"], rotation=45, ha="right", fontsize=8)
         ax.legend(fontsize=8)
@@ -119,7 +124,7 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
     for idx in range(n, nrows * ncols):
         axes[idx // ncols][idx % ncols].set_visible(False)
 
-    fig.suptitle("Robustness Degradation: Clean vs Robust PR-AUC", fontsize=14)
+    fig.suptitle("Robustness Degradation: Clean vs Robust PR-AUC (ε=0.1)", fontsize=14)
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, "robustness_bars.png"), dpi=150)
     plt.close(fig)
