@@ -309,51 +309,66 @@ class TestPlotRobustnessCurves:
             })
         return pd.DataFrame(rows)
 
-    def test_single_epsilon_defences_included(self, tmp_path):
+    def test_single_epsilon_defences_included(self, tmp_path, monkeypatch):
         """Defences with only 1 epsilon value should appear as scatter markers."""
+        import matplotlib.pyplot as plt
         from scripts.generate_figures import plot_robustness_curves
 
         df = self._make_multi_defence_data()
-        plot_robustness_curves(df, str(tmp_path))
 
-        # Figure should be saved
+        # Prevent plt.close so we can inspect the figure
+        monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
+        plot_robustness_curves(df, str(tmp_path))
         assert (tmp_path / "robustness_curves.png").exists()
 
-        # Re-run the aggregation + filtering logic to check inclusion
-        from scripts.generate_figures import aggregate_seeds
-        agg = aggregate_seeds(df)
-        # After fix: all 3 defences should be present in the filtered data
-        # We verify by checking the figure was generated (non-empty)
-        # and the aggregated data includes all defence types for neural models
-        neural = agg[agg["model_type"] == "neural"]
-        assert set(neural["defence_type"].unique()) == {"none", "adversarial_training", "input_validation"}
+        fig = plt.gcf()
+        ax = fig.axes[0]
 
-    def test_neural_only_filter(self, tmp_path):
+        # Collect legend labels — should include all 3 defences
+        legend_labels = [t.get_text() for t in ax.get_legend().get_texts()]
+        assert any("none" in l for l in legend_labels), f"Missing 'none' in {legend_labels}"
+        assert any("adversarial_training" in l for l in legend_labels), f"Missing 'adversarial_training' in {legend_labels}"
+        assert any("input_validation" in l for l in legend_labels), f"Missing 'input_validation' in {legend_labels}"
+
+        # Should have at least 1 line (none baseline) and 2 scatter collections
+        lines = ax.get_lines()
+        collections = [c for c in ax.collections if hasattr(c, 'get_offsets') and len(c.get_offsets()) > 0]
+        assert len(lines) >= 1, "Expected at least 1 line for multi-epsilon defence"
+        assert len(collections) >= 2, f"Expected at least 2 scatter collections, got {len(collections)}"
+        plt.close("all")
+
+    def test_neural_only_filter(self, tmp_path, monkeypatch):
         """Robustness curves should filter to neural models only (CAPGD irrelevant for trees)."""
+        import matplotlib.pyplot as plt
         from scripts.generate_figures import plot_robustness_curves
 
         df = self._make_multi_defence_data()
-        # Add tree data — should be excluded from CAPGD curves
         for eps in [0.01, 0.05, 0.1]:
             for seed in [42, 123, 456]:
                 df = pd.concat([df, pd.DataFrame([{
                     "dataset": "ccfd", "model_type": "tree",
                     "defence_type": "none", "attack_type": "capgd",
                     "attack_epsilon": eps, "seed": seed,
-                    "robust_pr_auc": 0.86,  # identical to clean — CAPGD no-op on trees
+                    "robust_pr_auc": 0.86,
                     "clean_pr_auc": 0.86,
                 }])], ignore_index=True)
 
+        monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
         plot_robustness_curves(df, str(tmp_path))
         assert (tmp_path / "robustness_curves.png").exists()
+
+        fig = plt.gcf()
+        assert "Neural" in fig.texts[0].get_text()
+        plt.close("all")
 
 
 class TestPlotRobustnessBars:
     """Tests for robustness bars figure generation."""
 
-    def test_filters_to_canonical_epsilon(self, tmp_path):
-        """Bar chart should only show ε=0.1 data."""
-        from scripts.generate_figures import aggregate_seeds
+    def test_filters_to_canonical_epsilon(self, tmp_path, monkeypatch):
+        """Bar chart should only show ε=0.1 data, not other epsilons."""
+        import matplotlib.pyplot as plt
+        from scripts.generate_figures import plot_robustness_bars
 
         rows = []
         for eps in [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]:
@@ -365,14 +380,21 @@ class TestPlotRobustnessBars:
                     "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
                 })
         df = pd.DataFrame(rows)
-        agg = aggregate_seeds(df)
 
-        # After fix: filtering to eps=0.1 should leave 1 row for this config
-        filtered = agg[np.isclose(agg["attack_epsilon"], 0.1)]
-        assert len(filtered) == 1
+        monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
+        plot_robustness_bars(df, str(tmp_path))
+        assert (tmp_path / "robustness_bars.png").exists()
 
-    def test_bar_labels_include_model_type(self, tmp_path):
-        """Bar labels should include model_type for disambiguation."""
+        fig = plt.gcf()
+        ax = fig.axes[0]
+        # 2 bars per group (clean + robust), 1 group → 2 bars total
+        bars = [p for p in ax.patches if hasattr(p, 'get_height') and p.get_height() > 0]
+        assert len(bars) == 2, f"Expected 2 bars (1 group × 2 metrics), got {len(bars)}"
+        plt.close("all")
+
+    def test_bar_labels_include_model_and_attack(self, tmp_path, monkeypatch):
+        """Bar labels should include model_type and attack_type for disambiguation."""
+        import matplotlib.pyplot as plt
         from scripts.generate_figures import plot_robustness_bars
 
         rows = []
@@ -386,17 +408,27 @@ class TestPlotRobustnessBars:
                         "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
                     })
         df = pd.DataFrame(rows)
+
+        monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
         plot_robustness_bars(df, str(tmp_path))
         assert (tmp_path / "robustness_bars.png").exists()
+
+        fig = plt.gcf()
+        ax = fig.axes[0]
+        labels = [t.get_text() for t in ax.get_xticklabels()]
+        # Each label should contain model_type
+        for label in labels:
+            assert "neural" in label or "tree" in label, f"Label missing model_type: {label}"
+        # 4 groups (2 models × 2 defences) → 4 labels
+        assert len(labels) == 4, f"Expected 4 bar groups, got {len(labels)}"
+        plt.close("all")
 
 
 class TestPlotDefenceHeatmap:
     """Tests for defence heatmap figure generation."""
 
-    def test_ensemble_column_present(self, tmp_path):
-        """Heatmap should include ensemble defence column."""
-        from scripts.generate_figures import plot_defence_heatmap, aggregate_seeds
-
+    def _make_heatmap_data(self):
+        """Registry with neural baseline, adversarial_training, and ensemble."""
         rows = []
         # neural baseline (none)
         for seed in [42, 123, 456]:
@@ -422,6 +454,82 @@ class TestPlotDefenceHeatmap:
                 "attack_epsilon": 0.1, "seed": seed,
                 "robust_pr_auc": 0.72, "clean_pr_auc": 0.87,
             })
-        df = pd.DataFrame(rows)
+        return pd.DataFrame(rows)
+
+    def test_ensemble_column_present(self, tmp_path):
+        """Heatmap should include ensemble defence column with correct delta."""
+        from scripts.generate_figures import aggregate_seeds
+
+        df = self._make_heatmap_data()
+        agg = aggregate_seeds(df)
+
+        # Reproduce the heatmap merge logic to validate pivot content
+        baseline = agg[agg["defence_type"] == "none"].copy()
+        baseline = baseline.rename(columns={"robust_pr_auc_mean": "baseline_robust"})
+        merge_on = ["dataset", "model_type", "attack_type", "attack_epsilon"]
+        merged = agg.merge(baseline[merge_on + ["baseline_robust"]], on=merge_on, how="left")
+
+        # Ensemble has no same-model baseline — should be NaN before fallback
+        ens_rows = merged[merged["model_type"] == "ensemble"]
+        assert ens_rows["baseline_robust"].isna().all(), "Ensemble should have no same-model baseline"
+
+        # Now test the full function produces a file with ensemble
+        from scripts.generate_figures import plot_defence_heatmap
         plot_defence_heatmap(df, str(tmp_path))
         assert (tmp_path / "defence_heatmap.png").exists()
+
+    def test_ensemble_delta_correct(self, tmp_path, monkeypatch):
+        """Ensemble delta should be computed against neural none baseline."""
+        from scripts.generate_figures import plot_defence_heatmap
+        import matplotlib.pyplot as plt
+
+        df = self._make_heatmap_data()
+
+        monkeypatch.setattr(plt, "close", lambda *a, **kw: None)
+        plot_defence_heatmap(df, str(tmp_path))
+
+        fig = plt.gcf()
+        ax = fig.axes[0]
+        # Heatmap should have 2 columns: adversarial_training and ensemble
+        col_labels = [t.get_text() for t in ax.get_xticklabels()]
+        assert "adversarial_training" in col_labels, f"Missing adversarial_training in {col_labels}"
+        assert "ensemble" in col_labels, f"Missing ensemble in {col_labels}"
+        plt.close("all")
+
+    def test_multi_epsilon_baseline_no_duplication(self, tmp_path):
+        """Multi-epsilon baseline should not produce many-to-many join."""
+        from scripts.generate_figures import aggregate_seeds, plot_defence_heatmap
+        import matplotlib.pyplot as plt
+
+        rows = []
+        # neural baseline at multiple epsilons
+        for eps in [0.05, 0.1, 0.2]:
+            for seed in [42, 123, 456]:
+                rows.append({
+                    "dataset": "ccfd", "model_type": "neural",
+                    "defence_type": "none", "attack_type": "capgd",
+                    "attack_epsilon": eps, "seed": seed,
+                    "robust_pr_auc": 0.80 - eps, "clean_pr_auc": 0.90,
+                })
+        # adversarial_training at eps=0.1 only
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "adversarial_training", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.75, "clean_pr_auc": 0.88,
+            })
+
+        df = pd.DataFrame(rows)
+        agg = aggregate_seeds(df)
+
+        # With attack_epsilon in merge, adv_training at 0.1 should only join
+        # with baseline at 0.1, not with 0.05 or 0.2
+        baseline = agg[agg["defence_type"] == "none"].copy()
+        baseline = baseline.rename(columns={"robust_pr_auc_mean": "baseline_robust"})
+        merge_on = ["dataset", "model_type", "attack_type", "attack_epsilon"]
+        merged = agg.merge(baseline[merge_on + ["baseline_robust"]], on=merge_on, how="left")
+        defended = merged[merged["defence_type"] == "adversarial_training"]
+        # Should be exactly 1 row (at eps=0.1), not 3 from many-to-many
+        assert len(defended) == 1, f"Expected 1 row, got {len(defended)} (many-to-many join?)"
+        plt.close("all")

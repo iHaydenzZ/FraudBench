@@ -93,7 +93,7 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
     for idx, dataset in enumerate(datasets):
         ax = axes[idx // ncols][idx % ncols]
         sub = agg[agg["dataset"] == dataset].copy()
-        sub["label"] = sub["model_type"] + " / " + sub["defence_type"]
+        sub["label"] = sub["model_type"] + " / " + sub["defence_type"] + " / " + sub["attack_type"]
 
         x = np.arange(len(sub))
         width = 0.35
@@ -218,22 +218,22 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
         print("  Skipping defence_heatmap: no robust data available.")
         return
 
-    # Get baseline (defence_type == 'none') per dataset+model+attack
+    # Get baseline (defence_type == 'none') per dataset+model+attack+epsilon
     baseline = agg[agg["defence_type"] == "none"].copy()
     baseline = baseline.rename(columns={"robust_pr_auc_mean": "baseline_robust"})
 
-    # Standard merge: same model_type baseline
-    merge_on = ["dataset", "model_type", "attack_type"]
+    # Include attack_epsilon in merge to avoid many-to-many joins
+    merge_on = ["dataset", "model_type", "attack_type", "attack_epsilon"]
     merged = agg.merge(baseline[merge_on + ["baseline_robust"]], on=merge_on, how="left")
 
-    # For ensemble: use neural 'none' baseline instead
+    # For ensemble: use neural 'none' baseline (include epsilon to stay 1:1)
     neural_baseline = baseline[baseline["model_type"] == "neural"][
-        ["dataset", "attack_type", "baseline_robust"]
+        ["dataset", "attack_type", "attack_epsilon", "baseline_robust"]
     ].copy()
     neural_baseline = neural_baseline.rename(columns={"baseline_robust": "neural_baseline_robust"})
 
     merged = merged.merge(
-        neural_baseline, on=["dataset", "attack_type"], how="left"
+        neural_baseline, on=["dataset", "attack_type", "attack_epsilon"], how="left"
     )
 
     # Fill in ensemble rows: use neural baseline where same-model baseline is missing
@@ -324,10 +324,12 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
         ax = axes[idx // ncols][idx % ncols]
         sub = agg[agg["dataset"] == dataset]
 
-        defences = sorted(sub["defence_type"].unique())
-        for defence in defences:
-            d = sub[sub["defence_type"] == defence].sort_values("attack_epsilon")
+        # Iterate by (defence, attack) pairs to avoid collapsing different attacks
+        series_keys = sorted(sub[["defence_type", "attack_type"]].drop_duplicates().itertuples(index=False))
+        for defence, attack in series_keys:
+            d = sub[(sub["defence_type"] == defence) & (sub["attack_type"] == attack)].sort_values("attack_epsilon")
             yerr = d["robust_pr_auc_std"].fillna(0)
+            series_label = f"{defence} ({attack})" if sub["attack_type"].nunique() > 1 else defence
 
             if len(d) >= 2:
                 # Line plot for multi-epsilon data
@@ -337,7 +339,7 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
                     yerr=yerr,
                     marker="o",
                     capsize=3,
-                    label=defence,
+                    label=series_label,
                 )
             elif len(d) == 1:
                 # Single-point marker for defences with only one epsilon
@@ -347,7 +349,7 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
                     marker="^",
                     s=100,
                     zorder=5,
-                    label=f"{defence} (ε={d['attack_epsilon'].values[0]})",
+                    label=f"{series_label} (ε={d['attack_epsilon'].values[0]})",
                 )
 
         ax.set_xlabel("Epsilon")
