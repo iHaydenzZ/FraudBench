@@ -598,3 +598,40 @@ class TestStatisticalTestsEnsemble:
         assert len(ens_row) >= 1
         row = ens_row.iloc[0]
         assert "cross-model" in str(row.get("note", "")).lower() or row["model_type"] == "ensemble"
+
+
+class TestInputValidationAnalysis:
+    """Tests for input validation degradation analysis."""
+
+    def test_epsilon_filter_strict(self):
+        """Analysis should only include ε=0.1 data in the output."""
+        from scripts.analyse_input_validation import aggregate_seeds, compute_degradation
+
+        rows = []
+        # Baseline at multiple epsilons
+        for eps in [0.05, 0.1, 0.2]:
+            for seed in [42, 123, 456]:
+                rows.append({
+                    "dataset": "ccfd", "model_type": "neural",
+                    "defence_type": "none", "attack_type": "capgd",
+                    "attack_epsilon": eps, "seed": seed,
+                    "robust_pr_auc": 0.80 - eps, "clean_pr_auc": 0.90,
+                    "robust_f1": 0.70 - eps, "robust_recall": 0.60 - eps,
+                })
+        # input_validation at eps=0.1 only
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "input_validation", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.55, "clean_pr_auc": 0.89,
+                "robust_f1": 0.50, "robust_recall": 0.45,
+            })
+        df = pd.DataFrame(rows)
+        agg = aggregate_seeds(df)
+        deg = compute_degradation(agg)
+
+        # Should produce exactly 1 row: ccfd/neural/capgd at eps=0.1
+        assert len(deg) == 1
+        # Baseline robust value should be 0.80 - 0.1 = 0.70 (not averaged across epsilons)
+        assert deg["robust_prauc_baseline"].iloc[0] == pytest.approx(0.70, abs=0.01)

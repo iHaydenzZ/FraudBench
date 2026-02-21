@@ -113,6 +113,7 @@ def compute_degradation(agg: pd.DataFrame) -> pd.DataFrame:
 
     Returns a DataFrame with one row per dataset+model+attack combination,
     showing the delta (input_validation minus baseline) for key robust metrics.
+    Filters to ε=0.1 only (canonical epsilon for the benchmark).
     """
     merge_keys = ["dataset", "model_type", "attack_type", "attack_epsilon"]
 
@@ -121,6 +122,14 @@ def compute_degradation(agg: pd.DataFrame) -> pd.DataFrame:
 
     if baseline.empty or input_val.empty:
         print("ERROR: registry does not contain both 'none' and 'input_validation' rows.")
+        sys.exit(1)
+
+    # Filter to canonical epsilon (0.1) for consistent comparison
+    baseline = baseline[np.isclose(baseline["attack_epsilon"], 0.1)]
+    input_val = input_val[np.isclose(input_val["attack_epsilon"], 0.1)]
+
+    if baseline.empty or input_val.empty:
+        print("ERROR: no data at ε=0.1 for baseline or input_validation.")
         sys.exit(1)
 
     merged = input_val.merge(
