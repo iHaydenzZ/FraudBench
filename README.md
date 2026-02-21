@@ -75,7 +75,7 @@ FraudBench/
 ├── results/          # Experiment results and cached artifacts
 ├── runner/           # Experiment runner
 ├── scripts/          # Batch run and figure generation scripts
-└── tests/            # Unit tests (87 tests)
+└── tests/            # Unit tests (97 tests)
 ```
 
 ## Datasets
@@ -181,7 +181,7 @@ defence:
 | `ccfd_input_val_z5.yaml` | CCFD | Neural | CAPGD | Input Val (z=5) |
 | `ccfd_input_val_z10.yaml` | CCFD | Neural | CAPGD | Input Val (z=10) |
 
-Similar configs exist for `ieee_cis`, `lcld`, and `sparkov`. See `configs/` for the full set.
+Similar configs exist for `ieee_cis`, `lcld`, and `sparkov`. See `configs/` for the full set (50 configs).
 
 ## Running Experiments
 
@@ -316,7 +316,7 @@ defence:
 
 ## Testing
 
-Run the test suite (87 tests across 10 test files):
+Run the test suite (97 tests across 10 test files):
 
 ```bash
 uv run pytest tests/ -v

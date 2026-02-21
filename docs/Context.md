@@ -1,6 +1,6 @@
 # FraudBench: Project Context
 
-> **Last updated:** 2026-02-20
+> **Last updated:** 2026-02-21
 
 ---
 
@@ -17,9 +17,9 @@ FraudBench (FRBS — Fraud-Robust Benchmark Suite) evaluates adversarial robustn
 | Tier 1 | MVP + epsilon curves + multi-seed | Done |
 | Tier 2 (minimum) | Tier 1 + 4 datasets | Done |
 | Tier 3 (target) | Tier 2 + black-box attacks | Partial (Square done, HSJ 6/12) |
-| Tier 4 (stretch) | Tier 3 + Ensemble + CTGAN + Transferability | Not started |
+| Tier 4 (stretch) | Tier 3 + Ensemble + CTGAN + Transferability | Partial (Ensemble done) |
 
-**Current position:** Tier 3 in progress. Square Attack complete (4 datasets × 3 seeds). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Deduplicated registry at `results/registry_clean.csv` (151 rows).
+**Current position:** Tier 3 complete (Square), Tier 4 partial (Ensemble done). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Ensemble experiments complete (24 runs). Deduplicated registry at `results/registry_clean.csv` (182 rows). All figures and analysis artefacts fixed and regenerated (Feb 21).
 
 ---
 
@@ -54,6 +54,7 @@ Load Config -> Load Dataset -> Split (stratified, cached) -> Preprocess (Standar
 
 - `defences/adversarial_training.py`: PGD-3 augmentation during training with constraint projection
 - `defences/input_validation.py`: Constraint-based bound clipping + z-score outlier clipping at inference
+- `defences/ensemble.py` + `models/ensemble.py`: Heterogeneous ensemble (LR + XGBoost + MLP) with soft voting
 
 ### Config Schema
 
@@ -99,7 +100,7 @@ FraudBench/
 ├── results/          # registry.csv, registry_clean.csv + cached artifacts
 ├── runner/           # CLI entrypoint
 ├── scripts/          # Batch runner, figure generation, analysis, run_remaining_hsj.py
-├── tests/            # Pytest suite (77 tests)
+├── tests/            # Pytest suite (97 tests, 10 files)
 ├── notebooks/        # Colab runner + debug notebooks
 ├── docs/             # This file + ToDo.md
 └── .github/          # CI/CD (GitHub Actions: ruff + pytest)
@@ -111,15 +112,15 @@ FraudBench/
 
 ### Registry Statistics (registry_clean.csv — deduplicated)
 
-- **Total rows:** 151 (deduplicated; keeps latest timestamp per experiment+seed+epsilon)
-- **Raw registries:** `registry.csv` (172 rows), `20260216_GPU_only_registry.csv` (236 rows) — merged and deduplicated into `registry_clean.csv`
-- **Date range:** 2026-02-13 to 2026-02-19
-- **Datasets:** CCFD (39), IEEE-CIS (38), LCLD (37), Sparkov (37)
-- **Models:** Neural MLP (108), XGBoost (43)
-- **Attacks executed:** CAPGD (129), Square (12), HopSkipJump (6) — 4 remaining HSJ not yet run
-- **Defences:** none (117), adversarial_training (12), input_validation (22)
-- **Seeds:** 42 (53), 123 (50), 456 (48)
-- **Unique configs executed:** 20/24 (83%) -- 4 tree+adv_train are N/A (gradients required)
+- **Total rows:** 182 (deduplicated; keeps latest timestamp per experiment+seed+epsilon)
+- **Raw registries:** `registry.csv`, `20260216_GPU_only_registry.csv` — merged and deduplicated into `registry_clean.csv`
+- **Date range:** 2026-02-13 to 2026-02-21
+- **Datasets:** CCFD, IEEE-CIS, LCLD, Sparkov (4 datasets)
+- **Models:** Neural MLP, XGBoost, Ensemble (LR+XGBoost+MLP)
+- **Attacks executed:** CAPGD (white-box), Square (black-box, complete), HopSkipJump (black-box, 6/12)
+- **Defences:** none, adversarial_training, input_validation, ensemble
+- **Seeds:** 42, 123, 456
+- **Unique configs executed:** 20/24 baseline + 24 ensemble = 35 configurations
 
 ### Coverage Matrix (CAPGD, 3 seeds each)
 
@@ -236,6 +237,6 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | Phase 1: Data Preparation | Wk 1-2 | 4 datasets cleaned, preprocessed | Done |
 | Phase 2: Model Building | Wk 3-4 | XGBoost + Neural MLP baselines | Done |
 | Phase 3: Attack Implementation | Wk 5-6 | CAPGD + black-box attacks | Mostly done (CAPGD complete, Square complete, HSJ 6/12) |
-| Phase 4: Defence Integration | Wk 7-9 | 4 defence methods | Partial (2/4: adv training + input validation) |
-| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Partial (CAPGD matrix + Square complete, eps sweeps done, HSJ 6/12, no transferability) |
-| Phase 6: Analysis & Reporting | Wk 13 | Final report + visualizations | Not started |
+| Phase 4: Defence Integration | Wk 7-9 | 4 defence methods | Partial (3/4: adv training + input validation + ensemble) |
+| Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Mostly done (CAPGD + Square + Ensemble complete, eps sweeps done, HSJ 6/12, no transferability) |
+| Phase 6: Analysis & Reporting | Wk 13 | Final report + visualizations | In progress (figures fixed, stats done, docs partial) |

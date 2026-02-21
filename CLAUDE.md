@@ -67,4 +67,6 @@ uv run python scripts/run_remaining_hsj.py
 See `docs/Context.md` for architecture, experiment state, and research findings.
 See `docs/ToDo.md` for remaining tasks and priorities.
 
-**Canonical results:** Use `results/registry_clean.csv` (151 deduplicated rows) for all analysis. Raw registries (`registry.csv`, `20260216_GPU_only_registry.csv`) contain duplicates and superseded data.
+**Canonical results:** Use `results/registry_clean.csv` (182 deduplicated rows) for all analysis. Raw registries (`registry.csv`, `20260216_GPU_only_registry.csv`) contain duplicates and superseded data.
+
+**CI locally:** The lockfile pins CUDA-only torch, so `uv run` fails on macOS ARM. Use the venv directly: `ruff check .`, `ruff format --check .`, `.venv/bin/pytest tests/ -v -m "not slow"`.

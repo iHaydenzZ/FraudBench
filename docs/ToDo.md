@@ -1,7 +1,7 @@
 # FraudBench: To-Do List
 
-> **Last updated:** 2026-02-20
-> **Estimated remaining work:** P1 ~4-6h, All ~10-18h
+> **Last updated:** 2026-02-21
+> **Estimated remaining work:** P1 ~4-6h (HSJ + docs), All ~8-14h
 
 ---
 
@@ -70,15 +70,17 @@ All 4 datasets have 3-seed epsilon sweeps (eps = {0.01, 0.05, 0.1, 0.15, 0.2, 0.
 
 ---
 
-### 7. Auto-Generated Figures and Report
+### ~~7. Auto-Generated Figures and Report~~ -- DONE
 
-`scripts/generate_figures.py` exists and produces 5 figure types. After running all experiments:
+`scripts/generate_figures.py` produces 6 figure types + summary CSV. All figures fixed and regenerated (Feb 21):
+- Robustness curves now show all defences (single-epsilon as scatter markers)
+- Robustness bars filtered to ε=0.1 only (readable labels)
+- Defence heatmap includes ensemble column (vs neural baseline)
+- Summary table annotates tree+CAPGD rows with † footnote
+- Statistical tests support cross-model ensemble comparisons
+- Input validation analysis uses strict ε=0.1 filter
 
-```bash
-uv run python scripts/generate_figures.py
-```
-
-Figures: robustness bars, attack comparison, summary table, defence heatmap, training time.
+See `docs/FIX_DOCUMENT.md` for issue details and `docs/plans/2026-02-21-fix-figures-and-analysis.md` for the implementation plan.
 
 ---
 
@@ -99,23 +101,15 @@ uv run python -m scripts.transferability --dataset sparkov --seed 42 --epsilon 0
 
 ---
 
-### 9. Statistical Significance Testing
+### ~~9. Statistical Significance Testing~~ -- DONE
 
-3-seed setup enables paired t-tests or Wilcoxon signed-rank tests for defence comparisons.
-
-```bash
-uv run python scripts/statistical_tests.py
-```
-
-**Estimated effort:** 1-2 hours.
+`scripts/statistical_tests.py` runs pairwise paired t-tests + Wilcoxon signed-rank + Cohen's d. Cross-model ensemble comparisons added Feb 21. Results in `results/figures/statistical_tests.csv`.
 
 ---
 
-### 10. Ensemble Defence
+### ~~10. Ensemble Defence~~ -- DONE
 
-Progress Report promises 4 defence methods. Currently have 2. Ensemble (Logistic Regression + XGBoost + Neural with voting/stacking) would add a third.
-
-**Estimated effort:** 4-8 hours.
+Ensemble model (LR + XGBoost + MLP with soft voting) implemented in `defences/ensemble.py` and `models/ensemble.py`. 24 experiment runs complete in registry. Configs: `*_ensemble.yaml` and `*_ensemble_square.yaml`.
 
 ---
 
@@ -162,10 +156,10 @@ uv run python scripts/analyse_input_validation.py
 | 4 | ~~Epsilon sweeps multi-seed~~ | GPU | 8 (x6 eps) | P1 | **Done** |
 | 5 | Reproducibility docs | Writing | -- | P1 | Pending |
 | 6 | Document tree+adv_train gap | Writing | -- | P1 | Pending |
-| 7 | Generate figures | Local | -- | P1 | Pending |
+| 7 | ~~Generate figures~~ | Local | -- | P1 | **Done** |
 | 8 | Transferability experiments | GPU | 4 | P2 | Pending |
-| 9 | Statistical tests | Local | -- | P2 | Pending |
-| 10 | Ensemble defence | Code+GPU | TBD | P2 | Pending |
+| 9 | ~~Statistical tests~~ | Local | -- | P2 | **Done** |
+| 10 | ~~Ensemble defence~~ | Code+GPU | 24 | P2 | **Done** |
 | 11 | CTGAN augmentation | Code+GPU | TBD | P2 | Pending |
 | 12 | Model zoo | GPU | -- | P2 | Pending |
 
