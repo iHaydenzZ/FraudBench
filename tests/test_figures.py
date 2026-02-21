@@ -388,3 +388,40 @@ class TestPlotRobustnessBars:
         df = pd.DataFrame(rows)
         plot_robustness_bars(df, str(tmp_path))
         assert (tmp_path / "robustness_bars.png").exists()
+
+
+class TestPlotDefenceHeatmap:
+    """Tests for defence heatmap figure generation."""
+
+    def test_ensemble_column_present(self, tmp_path):
+        """Heatmap should include ensemble defence column."""
+        from scripts.generate_figures import plot_defence_heatmap, aggregate_seeds
+
+        rows = []
+        # neural baseline (none)
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "none", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.65, "clean_pr_auc": 0.85,
+            })
+        # adversarial_training (neural)
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "adversarial_training", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.75, "clean_pr_auc": 0.83,
+            })
+        # ensemble (model_type=ensemble, defence_type=ensemble)
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "ensemble",
+                "defence_type": "ensemble", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.72, "clean_pr_auc": 0.87,
+            })
+        df = pd.DataFrame(rows)
+        plot_defence_heatmap(df, str(tmp_path))
+        assert (tmp_path / "defence_heatmap.png").exists()

@@ -207,6 +207,9 @@ def plot_summary_table(df: pd.DataFrame, output_dir: str):
 def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
     """
     Figure 4: Defence effectiveness heatmap — delta robust PR-AUC vs no-defence.
+
+    Ensemble defence is compared against the neural 'none' baseline, since
+    the ensemble model includes a neural sub-model.
     """
     agg = aggregate_seeds(df)
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
@@ -218,8 +221,26 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
     # Get baseline (defence_type == 'none') per dataset+model+attack
     baseline = agg[agg["defence_type"] == "none"].copy()
     baseline = baseline.rename(columns={"robust_pr_auc_mean": "baseline_robust"})
+
+    # Standard merge: same model_type baseline
     merge_on = ["dataset", "model_type", "attack_type"]
     merged = agg.merge(baseline[merge_on + ["baseline_robust"]], on=merge_on, how="left")
+
+    # For ensemble: use neural 'none' baseline instead
+    neural_baseline = baseline[baseline["model_type"] == "neural"][
+        ["dataset", "attack_type", "baseline_robust"]
+    ].copy()
+    neural_baseline = neural_baseline.rename(columns={"baseline_robust": "neural_baseline_robust"})
+
+    merged = merged.merge(
+        neural_baseline, on=["dataset", "attack_type"], how="left"
+    )
+
+    # Fill in ensemble rows: use neural baseline where same-model baseline is missing
+    is_ensemble = merged["model_type"] == "ensemble"
+    merged.loc[is_ensemble, "baseline_robust"] = merged.loc[is_ensemble, "neural_baseline_robust"]
+    merged = merged.drop(columns=["neural_baseline_robust"])
+
     merged["delta"] = merged["robust_pr_auc_mean"] - merged["baseline_robust"]
 
     # Filter to defences only (exclude 'none')
@@ -232,7 +253,7 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
 
     fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.5 + 1)))
     sns.heatmap(pivot, annot=True, fmt=".4f", cmap="RdYlGn", center=0, ax=ax)
-    ax.set_title("Defence Effectiveness: Delta Robust PR-AUC vs No Defence")
+    ax.set_title("Defence Effectiveness: Delta Robust PR-AUC vs No Defence\n(ensemble compared vs neural baseline)")
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, "defence_heatmap.png"), dpi=150)
     plt.close(fig)
