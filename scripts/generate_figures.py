@@ -258,8 +258,8 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
     """
     Figure 6: Robustness curves — Robust PR-AUC vs epsilon per dataset.
 
-    Filters to experiment groups with >1 epsilon value, then plots one subplot
-    per dataset with one line per defence_type (error bars from std across seeds).
+    Shows multi-epsilon sweeps as lines and single-epsilon defences as scatter
+    markers.  Filters to neural models only (CAPGD is a no-op on trees).
     """
     agg = aggregate_seeds(df)
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
@@ -268,21 +268,26 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
         print("  Skipping robustness_curves: no robust data available.")
         return
 
-    # Keep only groups (dataset + model + defence + attack) with >1 epsilon value
+    # Filter to neural models only — CAPGD has no effect on tree models
+    agg = agg[agg["model_type"] == "neural"]
+    if agg.empty:
+        print("  Skipping robustness_curves: no neural model data available.")
+        return
+
+    # Classify each (dataset, defence, attack) group as multi-epsilon or single
     group_cols = ["dataset", "model_type", "defence_type", "attack_type"]
     counts = agg.groupby(group_cols)["attack_epsilon"].nunique().reset_index(name="n_eps")
     multi_eps = counts[counts["n_eps"] > 1]
+
+    # Need at least one multi-epsilon group to anchor the x-axis
     if multi_eps.empty:
         print("  Skipping robustness_curves: no multi-epsilon groups found.")
         return
 
-    agg = agg.merge(multi_eps[group_cols], on=group_cols, how="inner")
-    agg = agg.sort_values("attack_epsilon")
-
     datasets = sorted(agg["dataset"].unique())
     n = len(datasets)
     if n == 0:
-        print("  Skipping robustness_curves: no datasets with multi-epsilon data.")
+        print("  Skipping robustness_curves: no datasets with data.")
         return
 
     ncols = min(n, 3)
@@ -297,14 +302,27 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
         for defence in defences:
             d = sub[sub["defence_type"] == defence].sort_values("attack_epsilon")
             yerr = d["robust_pr_auc_std"].fillna(0)
-            ax.errorbar(
-                d["attack_epsilon"],
-                d["robust_pr_auc_mean"],
-                yerr=yerr,
-                marker="o",
-                capsize=3,
-                label=defence,
-            )
+
+            if len(d) >= 2:
+                # Line plot for multi-epsilon data
+                ax.errorbar(
+                    d["attack_epsilon"],
+                    d["robust_pr_auc_mean"],
+                    yerr=yerr,
+                    marker="o",
+                    capsize=3,
+                    label=defence,
+                )
+            elif len(d) == 1:
+                # Single-point marker for defences with only one epsilon
+                ax.scatter(
+                    d["attack_epsilon"].values,
+                    d["robust_pr_auc_mean"].values,
+                    marker="^",
+                    s=100,
+                    zorder=5,
+                    label=f"{defence} (ε={d['attack_epsilon'].values[0]})",
+                )
 
         ax.set_xlabel("Epsilon")
         ax.set_ylabel("Robust PR-AUC")
@@ -316,7 +334,7 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
     for idx in range(n, nrows * ncols):
         axes[idx // ncols][idx % ncols].set_visible(False)
 
-    fig.suptitle("Robustness Curves: Robust PR-AUC vs Epsilon", fontsize=14)
+    fig.suptitle("Robustness Curves: Robust PR-AUC vs Epsilon (Neural Models)", fontsize=14)
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, "robustness_curves.png"), dpi=150)
     plt.close(fig)

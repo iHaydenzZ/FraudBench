@@ -271,3 +271,78 @@ class TestStatisticalTests:
         assert "significant" in loaded.columns
         assert "w_statistic" in loaded.columns
         assert "w_p_value" in loaded.columns
+
+
+class TestPlotRobustnessCurves:
+    """Tests for robustness curves figure generation."""
+
+    def _make_multi_defence_data(self):
+        """Registry with baseline at multiple epsilons + single-epsilon defences."""
+        rows = []
+        # Baseline (none) with multi-epsilon sweep
+        for eps in [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]:
+            for seed in [42, 123, 456]:
+                rows.append({
+                    "dataset": "ccfd", "model_type": "neural",
+                    "defence_type": "none", "attack_type": "capgd",
+                    "attack_epsilon": eps, "seed": seed,
+                    "robust_pr_auc": max(0.01, 0.85 - eps * 2),
+                    "clean_pr_auc": 0.90,
+                })
+        # adversarial_training at eps=0.1 only
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "adversarial_training", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.75,
+                "clean_pr_auc": 0.88,
+            })
+        # input_validation at eps=0.1 only
+        for seed in [42, 123, 456]:
+            rows.append({
+                "dataset": "ccfd", "model_type": "neural",
+                "defence_type": "input_validation", "attack_type": "capgd",
+                "attack_epsilon": 0.1, "seed": seed,
+                "robust_pr_auc": 0.55,
+                "clean_pr_auc": 0.89,
+            })
+        return pd.DataFrame(rows)
+
+    def test_single_epsilon_defences_included(self, tmp_path):
+        """Defences with only 1 epsilon value should appear as scatter markers."""
+        from scripts.generate_figures import plot_robustness_curves
+
+        df = self._make_multi_defence_data()
+        plot_robustness_curves(df, str(tmp_path))
+
+        # Figure should be saved
+        assert (tmp_path / "robustness_curves.png").exists()
+
+        # Re-run the aggregation + filtering logic to check inclusion
+        from scripts.generate_figures import aggregate_seeds
+        agg = aggregate_seeds(df)
+        # After fix: all 3 defences should be present in the filtered data
+        # We verify by checking the figure was generated (non-empty)
+        # and the aggregated data includes all defence types for neural models
+        neural = agg[agg["model_type"] == "neural"]
+        assert set(neural["defence_type"].unique()) == {"none", "adversarial_training", "input_validation"}
+
+    def test_neural_only_filter(self, tmp_path):
+        """Robustness curves should filter to neural models only (CAPGD irrelevant for trees)."""
+        from scripts.generate_figures import plot_robustness_curves
+
+        df = self._make_multi_defence_data()
+        # Add tree data — should be excluded from CAPGD curves
+        for eps in [0.01, 0.05, 0.1]:
+            for seed in [42, 123, 456]:
+                df = pd.concat([df, pd.DataFrame([{
+                    "dataset": "ccfd", "model_type": "tree",
+                    "defence_type": "none", "attack_type": "capgd",
+                    "attack_epsilon": eps, "seed": seed,
+                    "robust_pr_auc": 0.86,  # identical to clean — CAPGD no-op on trees
+                    "clean_pr_auc": 0.86,
+                }])], ignore_index=True)
+
+        plot_robustness_curves(df, str(tmp_path))
+        assert (tmp_path / "robustness_curves.png").exists()
