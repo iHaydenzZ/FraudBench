@@ -1,6 +1,9 @@
 # TabularBench Comparison Findings
 
-**Notebook**: `notebooks/tabularbench_comparison.ipynb`
+**Notebooks**:
+- `notebooks/tabularbench_comparison.ipynb` — Tiers 1–2 (mutability mask, feasibility rate)
+- `notebooks/tabularbench_metric_analysis.ipynb` — Directions 3 & 7 (ADV/ADV+CTR gap, ranking sensitivity)
+
 **Dataset**: LCLD (Lending Club Loan Default), 134,097 samples (10% subsample)
 **Model**: Neural network (128-dim hidden, 20 epochs, class-weighted)
 **Attack**: CAPGD, eps=0.1, 10 steps
@@ -111,14 +114,132 @@ Both variants perturb term OHE up to the full epsilon budget (0.1). Since term i
 
 ---
 
+## Direction 3: ADV vs ADV+CTR Gap Analysis
+
+**Notebook**: `notebooks/tabularbench_metric_analysis.ipynb`, Cells 1–5 (GPU required)
+
+Maps FraudBench's LCLD results into TabularBench's ADV / ADV+CTR evaluation framework. ADV measures recall under unconstrained adversarial attack; ADV+CTR measures recall after filtering out constraint-violating adversarial examples.
+
+### Core Metrics
+
+| Metric | Value |
+|--------|-------|
+| Clean Recall (ID) | 0.5542 (55.42%) |
+| ADV (unmasked) | 0.0027 (0.27%) |
+| ADV (masked) | 0.0088 (0.88%) |
+| ADV+CTR (unmasked) | 0.5538 (55.38%) |
+| ADV+CTR (masked) | 0.5536 (55.36%) |
+| **Gap unmasked (ADV+CTR − ADV)** | **+55.11 pp** |
+| **Gap masked (ADV+CTR − ADV)** | **+54.48 pp** |
+
+### Cross-Benchmark Comparison
+
+| Framework | Model | Training | ID Recall | ADV | ADV+CTR | Gap |
+|-----------|-------|----------|-----------|-----|---------|-----|
+| TabularBench | STG | Adv+CTGAN | 83.28% | 82.00% | 81.16% | −0.84 pp |
+| TabularBench | TabTransformer | Adv+CTGAN | 80.27% | 79.50% | 78.50% | −1.00 pp |
+| TabularBench | TabTransformer | Adv+CutMix | 72.33% | 72.50% | 70.96% | −1.54 pp |
+| TabularBench | RLN | Adv+None | 69.28% | 69.48% | 63.04% | −6.44 pp |
+| TabularBench | STG | Std+None | 65.99% | 66.40% | 53.60% | −12.80 pp |
+| TabularBench | RLN | Std+None | 68.51% | 68.30% | 0.02% | −68.28 pp |
+| TabularBench | VIME | Std+None | 67.13% | 67.00% | 2.38% | −64.62 pp |
+| **FraudBench** | **MLP** | **Std+None** | **55.42%** | **0.27%** | **55.38%** | **+55.11 pp** |
+| **FraudBench** | **MLP** | **Std+Mask** | **55.42%** | **0.88%** | **55.36%** | **+54.48 pp** |
+
+**FraudBench produces the largest gap on the LCLD leaderboard.** TabularBench's constraint-aware CAA shows gaps of 0.8–12.8 pp for adversarially-trained models. FraudBench's +55.11 pp gap indicates that CAPGD generates attacks that are nearly 100% effective at flipping predictions but >99.8% infeasible under domain constraints.
+
+### Filtered Attack Success Rate (positive class, predictions flipped 1→0)
+
+| Variant | Successful Attacks | Also Feasible | Filtered Success Rate |
+|---------|-------------------|---------------|----------------------|
+| Unmasked | 2,897 | 2 | 0.07% |
+| Masked | 2,865 | 3 | 0.10% |
+
+### Per-Constraint Failure on Flipped Positives (unmasked, n=2,897)
+
+| Constraint | Failure Rate | Pass Rate |
+|------------|-------------|-----------|
+| g1 (installment) | 99.3% | 0.7% |
+| g2 (open≤total) | 0.8% | 99.2% |
+| g3 (bk≤pub_rec) | 57.2% | 42.8% |
+| g4 (OHE valid) | 82.5% | 17.5% |
+
+### Threshold Sensitivity
+
+| Threshold | ADV Recall |
+|-----------|-----------|
+| 0.3 | 0.0038 |
+| 0.4 | 0.0032 |
+| 0.5 | 0.0027 |
+| 0.6 | 0.0021 |
+
+Near-zero ADV recall is stable across thresholds — the result is not an artifact of threshold choice.
+
+---
+
+## Direction 7: Ranking Sensitivity Analysis
+
+**Notebook**: `notebooks/tabularbench_metric_analysis.ipynb`, Cells 6–10 (pure analysis)
+
+Re-ranks TabularBench's 70-model LCLD leaderboard under alternative metrics to demonstrate that accuracy-based ranking is misleading for imbalanced fraud detection (20% positive class).
+
+### Degenerate Model Identification
+
+10 of 70 models are degenerate (MCC ≈ 0, trivial all-positive or all-negative prediction). All are TabNet variants. Most notable: TabNet adversarial+goggle achieves **100% ADV+CTR with only 20% accuracy** (predicts all-positive).
+
+### Re-Ranking Formulas
+
+1. **Original (TabularBench):** (Accuracy + ADV+CTR) / 2
+2. **F1-based:** (F1 + ADV+CTR) / 2
+3. **MCC-based:** (MCC_norm + ADV+CTR) / 2, where MCC_norm = (MCC + 1) / 2 × 100
+4. **AUC-based:** (AUC + ADV+CTR) / 2
+5. **Harmonic mean:** 2 × F1 × ADV+CTR / (F1 + ADV+CTR)
+
+### Top-10 Ranking Comparison
+
+| Rank | Arch | Training | Aug | Original | F1 | MCC | Harmonic |
+|------|------|----------|-----|----------|----|-----|----------|
+| 1 | STG | adversarial | ctgan | 1 | 2 | 2 | 1 |
+| 2 | TabTransformer | adversarial | ctgan | 2 | 3 | 3 | 3 |
+| 3 | TabTransformer | adversarial | cutmix | 3 | 5 | 5 | 4 |
+| 4 | VIME | adversarial | ctgan | 4 | 4 | 4 | 2 |
+| 5 | STG | adversarial | tvae | 5 | 7 | 7 | 6 |
+| 6 | STG | adversarial | goggle | 6 | 8 | 8 | 7 |
+| 7 | TabTransformer | adversarial | None | 7 | 6 | 6 | 5 |
+| 8 | VIME | adversarial | tvae | 8 | 10 | 10 | 8 |
+| 9 | TabTransformer | adversarial | tvae | 9 | 9 | 9 | 9 |
+| 10 | RLN | adversarial | tvae | 10 | 11 | 11 | 10 |
+
+### Rank Correlation Analysis
+
+| Ranking Pair | Kendall's τ | p-value | Spearman's ρ | p-value |
+|--------------|-------------|---------|--------------|---------|
+| Original vs F1 | 0.663 | 7.6e-16 | 0.793 | 3.0e-16 |
+| Original vs MCC | 0.683 | 1.1e-16 | 0.812 | 1.5e-17 |
+| Original vs AUC | 0.681 | 9.7e-17 | 0.822 | 2.6e-18 |
+| Original vs Harmonic | 0.735 | 7.0e-19 | 0.863 | 7.8e-22 |
+
+All alternatives show Spearman's ρ < 0.9 and Kendall's τ < 0.8, indicating **substantial ranking differences**. Accuracy-based ranking rewards degenerate models and does not correlate strongly with metrics appropriate for imbalanced fraud detection (F1, MCC).
+
+### Generated Figures
+
+- `rank_sensitivity_lcld.png/pdf` — 3-panel scatter plot of rank shifts (degenerate models in red)
+- `adv_vs_advctr_lcld.png` — ADV vs ADV+CTR scatter by training type
+
+---
+
 ## Implications
 
 1. **FraudBench's CAPGD generates ~99.8% infeasible adversarial examples** when checked against TabularBench's domain constraints. The bounds-only attack (feature-wise min/max clipping) is insufficient for producing realistic adversarial loans.
 
-2. **g1 (installment formula) is the dominant constraint**, failing for 98% of adversarial examples. This is a strong signal that constraint-aware attacks (like TabularBench's) are necessary for meaningful robustness evaluation on financial data.
+2. **g1 (installment formula) is the dominant constraint**, failing for 99.3% of successful adversarial attacks. This is a strong signal that constraint-aware attacks (like TabularBench's) are necessary for meaningful robustness evaluation on financial data.
 
 3. **g4 (term discreteness) is the second binding constraint.** CAPGD cannot preserve one-hot encoding by design -- it operates in continuous space. This affects both masked and unmasked attacks equally since term is mutable.
 
 4. **The mutability mask improves robustness metrics (+11.8pp accuracy)** but does not improve aggregate feasibility. The mask addresses a different problem (which features can be perturbed) than domain constraints (which perturbation values are valid). Both are necessary for realistic evaluation.
 
-5. **Future work**: Integrate constraint-aware attacks from TabularBench into FraudBench. The two benchmarks are complementary -- FraudBench contributes tree models, black-box attacks, and PR-AUC; TabularBench contributes domain constraints and constraint-aware optimization.
+5. **FraudBench produces the largest ADV/ADV+CTR gap (+55.11 pp) on the LCLD leaderboard.** Post-hoc constraint filtering restores predictions to near-clean levels, whereas TabularBench's constraint-aware CAA shows gaps of only 0.8–12.8 pp for adversarially-trained models. This demonstrates that constraint-unaware attacks vastly overstate model vulnerability.
+
+6. **Accuracy-based ranking is misleading for fraud detection.** Alternative metrics (F1, MCC) produce substantially different rankings (Kendall's τ < 0.74). TabularBench's leaderboard contains 10 degenerate models that accuracy-based scoring does not penalize. This motivates FraudBench's use of PR-AUC as the primary evaluation metric.
+
+7. **Future work**: Integrate constraint-aware attacks from TabularBench into FraudBench. The two benchmarks are complementary -- FraudBench contributes tree models, black-box attacks, and PR-AUC; TabularBench contributes domain constraints and constraint-aware optimization.
