@@ -415,12 +415,14 @@ os.makedirs(ADV_SAVE_DIR, exist_ok=True)
 # attack_fn_kind in {"masked", "directional"}.
 # For M6 the immutable set is computed per-seed from dataset.X.columns.
 VARIANTS = {
+    "M0":         ("masked",      set(),              {}),
+    "M1":         ("masked",      LCLD_IMMUTABLE_RAW, {}),
     "M2":         ("directional", LCLD_IMMUTABLE_RAW, {"direction": DIRECTION_CONSTRAINTS}),
     "M3":         ("masked",      LCLD_IMMUTABLE_M3,  {}),
     "M4":         ("masked",      LCLD_IMMUTABLE_M4,  {}),
     "M5":         ("masked",      LCLD_IMMUTABLE_M5,  {}),
-    "M6strict":   ("masked",      "from_profile",      {"profile": MUTABLE_STRICT}),
-    "M6relaxed":  ("masked",      "from_profile",      {"profile": MUTABLE_RELAXED}),
+    "M6strict":   ("masked",      "from_profile",     {"profile": MUTABLE_STRICT}),
+    "M6relaxed":  ("masked",      "from_profile",     {"profile": MUTABLE_RELAXED}),
 }
 
 rows = []  # per-(variant, seed) row for mask_ablation_results.csv
@@ -433,14 +435,14 @@ for seed in SEEDS:
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(
         dataset, test_size=0.2, val_size=0.2, random_state=seed,
     )
-    preprocessor_path = get_preprocessor_path("lcld", seed, len(dataset.X))
-    assert os.path.exists(preprocessor_path), (
-        f"Expected preprocessor at {preprocessor_path} (should have been saved by "
-        f"tabularbench_comparison.ipynb). Run that notebook first or sync from Drive."
-    )
-    preprocessor = DataPreprocessor.load(preprocessor_path)
-    X_train_p = preprocessor.transform(X_train)
+    # Always refit so the preprocessor is built with the Colab runtime's sklearn
+    # version (avoids InconsistentVersionWarning from stale joblibs) and so the
+    # full pipeline — train, preprocess, attack — is internally consistent.
+    preprocessor = DataPreprocessor(dataset.feature_types)
+    X_train_p = preprocessor.fit_transform(X_train)
     X_test_p = preprocessor.transform(X_test)
+    preprocessor_path = get_preprocessor_path("lcld", seed, len(dataset.X))
+    preprocessor.save(preprocessor_path)
     processed_feature_types = {c: "numeric" for c in X_train_p.columns}
     processed_schema = ConstraintSchema.from_data(X_train_p, processed_feature_types)
     print(f"  Data: train={len(X_train)}, test={len(X_test)}, processed={X_test_p.shape[1]}")
@@ -549,56 +551,33 @@ git commit -m "feat(notebook): add main experiment loop for mask ablation"
 - [ ] **Step 1: Add Cell 9**
 
 ```python
-# Cell 9: Load M0 (no-mask) and M1 (binary-mask) baselines into the same results frame
+# Cell 9: Historical M0/M1 baseline availability check (optional cross-reference)
+#
+# M0 and M1 are now produced fresh inside Cell 8's loop so the summary table
+# is apples-to-apples. This cell just copies historical baselines from Drive
+# for anyone who wants to manually compare; it does NOT feed into the summary.
 import shutil
 
 BASELINE_SRC = "/content/drive/MyDrive/FraudBench/results/adv_examples"
-BASELINE_LOCAL = "results/adv_examples"  # parquets already produced by reference notebook
-
-# Copy baseline parquets locally if missing (they may only exist on Drive)
+BASELINE_LOCAL = "results/adv_examples"
 os.makedirs(BASELINE_LOCAL, exist_ok=True)
+
+historical_copied = 0
 for seed in SEEDS:
-    for variant_label, baseline_file in [
-        ("M0", f"lcld_neural_unmasked_seed{seed}.parquet"),
-        ("M1", f"lcld_neural_masked_seed{seed}.parquet"),
-    ]:
+    for baseline_file in (
+        f"lcld_neural_unmasked_seed{seed}.parquet",
+        f"lcld_neural_masked_seed{seed}.parquet",
+    ):
         src = os.path.join(BASELINE_SRC, baseline_file)
         dst = os.path.join(BASELINE_LOCAL, baseline_file)
-        if not os.path.exists(dst) and os.path.exists(src):
+        if os.path.exists(src) and not os.path.exists(dst):
             shutil.copy(src, dst)
+            historical_copied += 1
 
-# Load comparison CSVs to get the robust metrics the baseline notebook recorded.
-m0_csv = os.path.join(BASELINE_SRC, "comparison_unmasked.csv")
-m1_csv = os.path.join(BASELINE_SRC, "comparison_masked.csv")
-assert os.path.exists(m0_csv) and os.path.exists(m1_csv), (
-    "Baseline comparison CSVs not found on Drive. Run tabularbench_comparison.ipynb first."
-)
-m0 = pd.read_csv(m0_csv)
-m1 = pd.read_csv(m1_csv)
-
-def _canon(df: pd.DataFrame, variant: str) -> pd.DataFrame:
-    """Normalize baseline rows to the same schema as results_df."""
-    out = pd.DataFrame({
-        "variant": variant,
-        "seed": df["seed"].astype(int),
-        "n_mutable":   df.get("n_mutable",   np.nan),
-        "n_immutable": df.get("n_immutable", np.nan),
-        "clean_pr_auc":   df.get("clean_pr_auc",   np.nan),
-        "clean_accuracy": df.get("clean_accuracy", np.nan),
-        "clean_recall":   df.get("clean_recall",   np.nan),
-        "clean_f1":       df.get("clean_f1",       np.nan),
-        "robust_pr_auc":   df["robust_pr_auc"],
-        "robust_accuracy": df["robust_accuracy"],
-        "robust_recall":   df.get("robust_recall", np.nan),
-        "robust_f1":       df.get("robust_f1",     np.nan),
-        "attack_time_s":   df.get("attack_time_s", np.nan),
-    })
-    return out
-
-baseline_rows = pd.concat([_canon(m0, "M0"), _canon(m1, "M1")], ignore_index=True)
-all_results = pd.concat([baseline_rows, results_df], ignore_index=True)
+all_results = results_df.copy()
 all_results.to_csv(os.path.join(ADV_SAVE_DIR, "mask_ablation_results.csv"), index=False)
-print(f"Combined results ({len(all_results)} rows = 8 variants × 3 seeds):")
+print(f"Using fresh M0/M1 from Cell 8 ({len(all_results)} rows = 8 variants x 3 seeds).")
+print(f"Historical baselines copied from Drive (cross-reference only): {historical_copied}")
 print(all_results)
 ```
 
@@ -696,14 +675,8 @@ assert num_transformer is not None, "Could not locate numeric transformer in pre
 scaler = num_transformer.named_steps["scaler"]
 
 VARIANT_FILES = {
-    "M0":        f"{BASELINE_LOCAL}/lcld_neural_unmasked_seed{AUDIT_SEED}.parquet",
-    "M1":        f"{BASELINE_LOCAL}/lcld_neural_masked_seed{AUDIT_SEED}.parquet",
-    "M2":        f"{ADV_SAVE_DIR}/lcld_neural_M2_seed{AUDIT_SEED}.parquet",
-    "M3":        f"{ADV_SAVE_DIR}/lcld_neural_M3_seed{AUDIT_SEED}.parquet",
-    "M4":        f"{ADV_SAVE_DIR}/lcld_neural_M4_seed{AUDIT_SEED}.parquet",
-    "M5":        f"{ADV_SAVE_DIR}/lcld_neural_M5_seed{AUDIT_SEED}.parquet",
-    "M6strict":  f"{ADV_SAVE_DIR}/lcld_neural_M6strict_seed{AUDIT_SEED}.parquet",
-    "M6relaxed": f"{ADV_SAVE_DIR}/lcld_neural_M6relaxed_seed{AUDIT_SEED}.parquet",
+    vname: f"{ADV_SAVE_DIR}/lcld_neural_{vname}_seed{AUDIT_SEED}.parquet"
+    for vname in ("M0", "M1", "M2", "M3", "M4", "M5", "M6strict", "M6relaxed")
 }
 
 
