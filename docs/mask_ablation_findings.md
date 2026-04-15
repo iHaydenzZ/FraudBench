@@ -21,7 +21,7 @@ _(table goes here)_
 ## Sanity checks performed
 
 - **Baseline reproduction.** Cell 9 loads M0/M1 rows verbatim from `comparison_{unmasked,masked}.csv`. Confirmed robust metrics match the prior run to within ±0.00 (exact — we reload, we don't recompute).
-- **M2 directional clip.** Cell 12 reports `emp_length_min_raw_delta` for M2. Must be ≥ -1e-6 (float noise tolerance). If not, the clip is broken.
+- **M2 directional clip (LCLD-specific).** `emp_length` in LCLD is OHE-encoded, not numeric. `resolve_direction_indices` is exact-match only and skips OHE categoricals, so the directional clip has no effect on LCLD. Expected: M2 robust metrics match M1 almost exactly. Cell 12's `emp_length_pct_negative` column will be NaN for M2 because no raw `emp_length` column exists in the inverse-transformed frame. A warning is printed at M2 attack time.
 - **Term freeze effect.** Cell 12 reports `term_ohe_max_abs_delta`. For M4 and M5, must be ≈ 0.
 - **Dti freeze effect.** Cell 12 reports `dti_mean_abs_delta`. For M3 and M5, must be ≈ 0.
 - **E1 scale linearity.** Cell 13 sensitivity rows at `cost_scale=2.0` must be exactly 2× the `cost_scale=1.0` rows (math check on the normalization).
@@ -35,11 +35,12 @@ _(verify each after Colab run; flag any that fail)_
 
 - **Single-seed feasibility.** Feasibility, perturbation stats, and E1 are seed=42 only (per spec §4). Robust metrics are averaged over 3 seeds. Summary table's `feasibility_seed42` / `g1_pass_seed42` / `g4_pass_seed42` columns should NOT be read with a ± band.
 - **M4 g4 ≈ 1.0 is an artifact, not a capability improvement.** Freezing `term_*` OHE columns guarantees the OHE validity check passes — this does not mean CAPGD learned to produce valid OHE encodings. Framing: "freezing term recovers the aggregate feasibility that was blocked solely by g4."
-- **E1 covers numeric + term only.** `purpose`, `home_ownership`, `addr_state`, `application_type` are OHE-encoded and cannot be recovered from `inverse_transform_numeric`. Their cost contribution is skipped (documented in `total_cost()` docstring). `term` IS reconstructed via `reconstruct_term_from_ohe`.
+- **E1 covers numeric features, `term`, and `emp_length`.** `term` is reconstructed via `reconstruct_term_from_ohe` (gives numeric 36/60). `emp_length` is categorical/OHE in LCLD, so E1 reconstructs it via OHE-argmax — its cost contribution is effectively "changed vs unchanged" weighted by COST[emp_length]. Remaining categoricals (`purpose`, `home_ownership`, `addr_state`, `application_type`) are NOT reconstructed and contribute 0 — this is a documented E1 scope limitation.
 - **E1 normalization.** Uses p1/p99 winsorized ranges (not min/max) to tame LCLD `annual_inc` tails.
 - **Variance bands overlap for most pairs.** With 3 seeds the robust-metric std is comparable to mean differences between most (variant, variant) pairs. Only flag pairs where mean-difference exceeds the seed-level std as carrying signal.
 - **Undeclared-feature handling.** `build_processed_mutable_mask` defaults to mutable for any column not matched against the immutable set. Raw LCLD features not listed in `LCLD_IMMUTABLE_RAW` ∪ `LCLD_MUTABLE_RAW` inherit this default — same behavior as the M1 baseline, so comparisons remain apples-to-apples.
 - **M6 immutable set** is `dataset.X.columns - MUTABLE_PROFILE`. Verified that `dataset.X.columns` excludes the target label.
+- **M2 is structurally a no-op on LCLD.** Directionality constraints require numeric raw features, but only `emp_length` in LCLD has a natural "increase-only" interpretation and it is stored as a 12-column OHE categorical. To actually evaluate M2 would require switching to an ordinal encoding of `emp_length` — left for future work. The current M2 result is reported as-is and should be read as "= M1, as expected under categorical encoding". This confirms spec §8.2's prediction.
 
 ---
 

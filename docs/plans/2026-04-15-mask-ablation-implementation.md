@@ -334,21 +334,26 @@ def resolve_direction_indices(
 ) -> Dict[int, str]:
     """Map raw feature directional config to processed column indices.
 
-    For numeric raw features the processed name equals the raw name.
-    For OHE-expanded categoricals, matches by prefix. M2 currently only
-    uses numeric features (emp_length), so prefix matching is defensive.
+    Exact-match only: OHE-expanded categoricals have no meaningful
+    per-column direction, so prefix matching would silently apply a bogus
+    constraint to every OHE column. Features whose raw name does not exist
+    as a processed column (e.g. a categorical like LCLD's emp_length) are
+    skipped with a warning — M2 becomes a no-op for such features.
     """
     out: Dict[int, str] = {}
+    matched_raw: Set[str] = set()
     for i, col in enumerate(processed_feature_names):
         if col in direction_raw:
             out[i] = direction_raw[col]
-            continue
-        parts = col.split("_")
-        for k in range(1, len(parts)):
-            prefix = "_".join(parts[:k])
-            if prefix in direction_raw:
-                out[i] = direction_raw[prefix]
-                break
+            matched_raw.add(col)
+    missing = set(direction_raw.keys()) - matched_raw
+    if missing:
+        print(
+            f"[M2 warning] direction constraints on {sorted(missing)} had no "
+            "effect: those features are not numeric columns in processed space "
+            "(likely OHE-encoded categorical). M2 will be equivalent to M1 "
+            "for these features."
+        )
     return out
 
 
@@ -863,10 +868,29 @@ for feat in FEATURE_COSTS:
         feature_ranges[feat] = 1.0
 
 
-def attach_reconstructed_term(X_raw: pd.DataFrame, X_proc: pd.DataFrame) -> pd.DataFrame:
-    """Add numeric 'term' column reconstructed from OHE so cost comparison is numeric."""
+def reconstruct_ohe_argmax(X_proc: pd.DataFrame, prefix: str) -> pd.Series:
+    """Reconstruct a categorical feature as an integer category index via OHE argmax.
+
+    Returns a Series of integer indices (not ordered labels). Used for cost
+    comparisons where only 'changed vs unchanged' matters, not magnitude.
+    """
+    cols = [c for c in X_proc.columns if c.startswith(f"{prefix}_")]
+    if not cols:
+        return pd.Series(np.nan, index=X_proc.index)
+    return X_proc[cols].values.argmax(axis=1)
+
+
+def attach_reconstructed_categoricals(X_raw: pd.DataFrame, X_proc: pd.DataFrame) -> pd.DataFrame:
+    """Add numeric surrogates for OHE-encoded categoricals we care about in E1.
+
+    term: reconstructed via reconstruct_term_from_ohe (gives 36 or 60).
+    emp_length: reconstructed via OHE argmax (gives integer category index).
+    Other LCLD categoricals (purpose, home_ownership, addr_state,
+    application_type) are not reconstructed — they contribute 0 to E1.
+    """
     out = X_raw.copy()
     out["term"] = reconstruct_term_from_ohe(X_proc)
+    out["emp_length"] = reconstruct_ohe_argmax(X_proc, "emp_length")
     return out
 
 
@@ -875,10 +899,12 @@ def total_cost(X_orig_raw: pd.DataFrame, X_adv_raw: pd.DataFrame,
     """Per-row attack cost = sum over features of COST[f] * normalized |delta|.
 
     Numeric features: |delta| / winsorized_range.
-    Only features present in both frames contribute. Non-term categoricals
-    (purpose, home_ownership, addr_state, application_type) are not recovered
-    by inverse_transform_numeric and contribute 0 — this is a documented
-    scope limitation for E1. 'term' is recovered via reconstruct_term_from_ohe.
+    Only features present in both frames contribute. 'term' and 'emp_length'
+    are recovered from OHE via attach_reconstructed_categoricals; emp_length
+    uses OHE-argmax index so the cost is effectively "changed vs unchanged"
+    scaled by COST[emp_length]. Remaining categoricals (purpose,
+    home_ownership, addr_state, application_type) are NOT reconstructed and
+    contribute 0 — this is a documented E1 scope limitation.
     """
     total = pd.Series(0.0, index=X_adv_raw.index)
     for feat, c in costs.items():
@@ -894,14 +920,14 @@ def total_cost(X_orig_raw: pd.DataFrame, X_adv_raw: pd.DataFrame,
 
 
 # Reconstruct term on the clean side once (adversarial reconstructed per-variant below).
-X_test_raw_with_term = attach_reconstructed_term(X_test_raw, X_test_p)
+X_test_raw_with_term = attach_reconstructed_categoricals(X_test_raw, X_test_p)
 
 e1_targets = ["M0", "M1"]
 e1_costs = {}
 for vname in e1_targets:
     X_adv_p = pd.read_parquet(VARIANT_FILES[vname])
     X_adv_raw = inverse_transform_numeric(X_adv_p, num_feature_names, scaler)
-    X_adv_raw = attach_reconstructed_term(X_adv_raw, X_adv_p)
+    X_adv_raw = attach_reconstructed_categoricals(X_adv_raw, X_adv_p)
     e1_costs[vname] = total_cost(X_test_raw_with_term, X_adv_raw, FEATURE_COSTS, feature_ranges)
 
 # Histogram
@@ -938,7 +964,7 @@ for scale in (1.0, 2.0, 0.5):
     for vname in e1_targets:
         X_adv_p = pd.read_parquet(VARIANT_FILES[vname])
         X_adv_raw = inverse_transform_numeric(X_adv_p, num_feature_names, scaler)
-        X_adv_raw = attach_reconstructed_term(X_adv_raw, X_adv_p)
+        X_adv_raw = attach_reconstructed_categoricals(X_adv_raw, X_adv_p)
         s = total_cost(X_test_raw_with_term, X_adv_raw, scaled_costs, feature_ranges)
         sensitivity_rows.append({
             "variant": vname, "cost_scale": scale,
@@ -1143,7 +1169,7 @@ git commit -m "chore: final mask ablation run — all deliverables verified" || 
 
 ## Notes on known-risk items (from spec §8 analysis)
 
-- **emp_length processed representation.** This plan treats `emp_length` as numeric (matching the raw feature_types setup in existing preprocessors). If it is somehow OHE-encoded in a future seed, `resolve_direction_indices` will still find it via prefix matching, so the directional clip still applies. The `term_ohe_max_abs_delta` check in Task 8 will expose any surprise.
+- **emp_length processed representation.** `emp_length` in LCLD is OHE-encoded into 12 columns (`emp_length_1 year`, …, `emp_length_missing`). `resolve_direction_indices` is exact-match only and therefore skips it, printing an `[M2 warning]`. M2 is structurally equivalent to M1 on LCLD (no numeric emp_length column exists). E1 reconstructs `emp_length` via OHE argmax so its cost contribution is counted as "changed vs unchanged".
 - **dti_joint is NaN for most rows.** After preprocessor imputation it becomes a near-constant column. Freezing it (M3) is therefore a near-no-op by itself; the M3 effect in the summary table should be read alongside this caveat.
 - **M6 immutable-set construction** uses `set(dataset.X.columns) - profile`. `dataset.X.columns` already excludes the target (verified from the reference notebook run log: `features=63`, same as the spec assumed).
 - **Runtime will likely exceed the spec's 4-min estimate** because feasibility-audit constraint checks on 26k rows × 8 variants are not instant. Budget 8 min total, not 4.
