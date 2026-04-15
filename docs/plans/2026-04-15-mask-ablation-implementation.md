@@ -844,8 +844,10 @@ for feat in FEATURE_COSTS:
 def reconstruct_ohe_argmax(X_proc: pd.DataFrame, prefix: str) -> pd.Series:
     """Reconstruct a categorical feature as an integer category index via OHE argmax.
 
-    Returns a Series of integer indices (not ordered labels). Used for cost
-    comparisons where only 'changed vs unchanged' matters, not magnitude.
+    Returns a Series of integer indices (NOT ordered labels). The index values
+    are arbitrary (OHE column order is lexical, not ordinal), so consumers
+    must compare with (a != o) rather than abs(a - o). Enforced in
+    total_cost() via BINARY_COST_FEATURES.
     """
     cols = [c for c in X_proc.columns if c.startswith(f"{prefix}_")]
     if not cols:
@@ -867,21 +869,34 @@ def attach_reconstructed_categoricals(X_raw: pd.DataFrame, X_proc: pd.DataFrame)
     return out
 
 
+# Features whose reconstructed raw representation is an OHE-argmax column index
+# (i.e. not ordinally meaningful) — cost contribution must be binary changed-or-not,
+# not scaled by index gap. See reconstruct_ohe_argmax note above.
+BINARY_COST_FEATURES = {"emp_length"}
+
+
 def total_cost(X_orig_raw: pd.DataFrame, X_adv_raw: pd.DataFrame,
                costs: dict, ranges: dict) -> pd.Series:
-    """Per-row attack cost = sum over features of COST[f] * normalized |delta|.
+    """Per-row attack cost = sum over features of COST[f] * normalized delta.
 
     Numeric features: |delta| / winsorized_range.
-    Only features present in both frames contribute. 'term' and 'emp_length'
-    are recovered from OHE via attach_reconstructed_categoricals; emp_length
-    uses OHE-argmax index so the cost is effectively "changed vs unchanged"
-    scaled by COST[emp_length]. Remaining categoricals (purpose,
-    home_ownership, addr_state, application_type) are NOT reconstructed and
-    contribute 0 — this is a documented E1 scope limitation.
+    'term' is ordinal (36 vs 60) and treated as numeric.
+    Features in BINARY_COST_FEATURES are treated as categorical — cost
+    contribution is COST[f] if the reconstructed category differs, else 0.
+    Only features present in both frames contribute. Other categoricals
+    (purpose, home_ownership, addr_state, application_type) are NOT
+    reconstructed and contribute 0 — documented E1 scope limitation.
     """
     total = pd.Series(0.0, index=X_adv_raw.index)
     for feat, c in costs.items():
         if feat not in X_adv_raw.columns or feat not in X_orig_raw.columns:
+            continue
+        if feat in BINARY_COST_FEATURES:
+            a_raw = X_adv_raw[feat]
+            o_raw = X_orig_raw[feat]
+            # Compare the reconstructed representations directly.
+            changed = (a_raw != o_raw).astype(float)
+            total = total + c * changed.fillna(0.0)
             continue
         a = pd.to_numeric(X_adv_raw[feat], errors="coerce")
         o = pd.to_numeric(X_orig_raw[feat], errors="coerce")
