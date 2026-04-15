@@ -859,29 +859,50 @@ for feat in FEATURE_COSTS:
         p1, p99 = np.nanpercentile(X_train[feat], [1, 99])
         feature_ranges[feat] = max(p99 - p1, 1e-6)
     else:
-        # Categorical: use 1.0 so any change contributes full cost weight
+        # Categorical: range = 1.0 so an OHE-changed feature contributes exactly COST[f]
         feature_ranges[feat] = 1.0
+
+
+def attach_reconstructed_term(X_raw: pd.DataFrame, X_proc: pd.DataFrame) -> pd.DataFrame:
+    """Add numeric 'term' column reconstructed from OHE so cost comparison is numeric."""
+    out = X_raw.copy()
+    out["term"] = reconstruct_term_from_ohe(X_proc)
+    return out
+
 
 def total_cost(X_orig_raw: pd.DataFrame, X_adv_raw: pd.DataFrame,
                costs: dict, ranges: dict) -> pd.Series:
+    """Per-row attack cost = sum over features of COST[f] * normalized |delta|.
+
+    Numeric features: |delta| / winsorized_range.
+    Only features present in both frames contribute. Non-term categoricals
+    (purpose, home_ownership, addr_state, application_type) are not recovered
+    by inverse_transform_numeric and contribute 0 — this is a documented
+    scope limitation for E1. 'term' is recovered via reconstruct_term_from_ohe.
+    """
     total = pd.Series(0.0, index=X_adv_raw.index)
     for feat, c in costs.items():
         if feat not in X_adv_raw.columns or feat not in X_orig_raw.columns:
             continue
-        if np.issubdtype(X_adv_raw[feat].dtype, np.number):
-            delta_norm = (X_adv_raw[feat] - X_orig_raw[feat]).abs() / ranges[feat]
-        else:
-            delta_norm = (X_adv_raw[feat] != X_orig_raw[feat]).astype(float)
-        total = total + c * delta_norm
+        a = pd.to_numeric(X_adv_raw[feat], errors="coerce")
+        o = pd.to_numeric(X_orig_raw[feat], errors="coerce")
+        if a.isna().all() or o.isna().all():
+            continue
+        delta_norm = (a - o).abs() / ranges[feat]
+        total = total + c * delta_norm.fillna(0.0)
     return total
+
+
+# Reconstruct term on the clean side once (adversarial reconstructed per-variant below).
+X_test_raw_with_term = attach_reconstructed_term(X_test_raw, X_test_p)
 
 e1_targets = ["M0", "M1"]
 e1_costs = {}
 for vname in e1_targets:
     X_adv_p = pd.read_parquet(VARIANT_FILES[vname])
     X_adv_raw = inverse_transform_numeric(X_adv_p, num_feature_names, scaler)
-    X_adv_raw["term"] = reconstruct_term_from_ohe(X_adv_p)
-    e1_costs[vname] = total_cost(X_test_raw, X_adv_raw, FEATURE_COSTS, feature_ranges)
+    X_adv_raw = attach_reconstructed_term(X_adv_raw, X_adv_p)
+    e1_costs[vname] = total_cost(X_test_raw_with_term, X_adv_raw, FEATURE_COSTS, feature_ranges)
 
 # Histogram
 fig, ax = plt.subplots(figsize=(8, 4))
@@ -897,7 +918,8 @@ plt.show()
 
 # Affordable curve
 fig, ax = plt.subplots(figsize=(8, 4))
-budgets = np.linspace(0, max(c.max() for c in e1_costs.values()), 200)
+max_cost = max(c.max() for c in e1_costs.values())
+budgets = np.linspace(0, max_cost, 200)
 for vname, costs_s in e1_costs.items():
     frac = [(costs_s <= B).mean() for B in budgets]
     ax.plot(budgets, frac, label=vname)
@@ -909,15 +931,15 @@ plt.tight_layout()
 plt.savefig(os.path.join(ADV_SAVE_DIR, "e1_affordable_curve.png"), dpi=150)
 plt.show()
 
-# Summary table (base, ×2, ×0.5 sensitivity)
+# Summary table (base, x2, x0.5 sensitivity)
 sensitivity_rows = []
 for scale in (1.0, 2.0, 0.5):
     scaled_costs = {k: v * scale for k, v in FEATURE_COSTS.items()}
     for vname in e1_targets:
         X_adv_p = pd.read_parquet(VARIANT_FILES[vname])
         X_adv_raw = inverse_transform_numeric(X_adv_p, num_feature_names, scaler)
-        X_adv_raw["term"] = reconstruct_term_from_ohe(X_adv_p)
-        s = total_cost(X_test_raw, X_adv_raw, scaled_costs, feature_ranges)
+        X_adv_raw = attach_reconstructed_term(X_adv_raw, X_adv_p)
+        s = total_cost(X_test_raw_with_term, X_adv_raw, scaled_costs, feature_ranges)
         sensitivity_rows.append({
             "variant": vname, "cost_scale": scale,
             "mean": s.mean(), "median": s.median(), "p95": s.quantile(0.95),
