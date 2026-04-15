@@ -446,7 +446,8 @@ for seed in SEEDS:
     model.fit(X_train_p, y_train)
     print(f"  Trained in {time.time()-t0:.1f}s")
 
-    clean_metrics = compute_metrics(model, X_test_p, y_test)
+    clean_probs = model.predict_proba(X_test_p)
+    clean_metrics = compute_metrics(y_test, clean_probs)
     print(f"  Clean  -- PR-AUC: {clean_metrics['pr_auc']:.4f}, Acc: {clean_metrics['accuracy']:.4f}")
 
     # Raw feature universe for M6 immutable-set construction
@@ -481,7 +482,8 @@ for seed in SEEDS:
             )
         dt = time.time() - t0
 
-        robust = compute_metrics(model, X_adv, y_test)
+        robust_probs = model.predict_proba(X_adv)
+        robust = compute_metrics(y_test, robust_probs)
         print(
             f"  {vname:10s} mut={n_mut:3d} imm={n_imm:3d} "
             f"-- Robust PR-AUC: {robust['pr_auc']:.4f}, Acc: {robust['accuracy']:.4f} ({dt:.1f}s)"
