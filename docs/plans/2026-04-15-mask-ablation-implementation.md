@@ -677,9 +677,9 @@ preprocessor = DataPreprocessor.load(
 )
 X_test_p = preprocessor.transform(X_test)
 
-# Extract scaler the same way the reference notebook does (Cell 11).
-# The preprocessor wraps a sklearn ColumnTransformer; the numeric branch is a
-# Pipeline with a "scaler" step.
+# Extract scaler the same way the reference notebook does.
+# The preprocessor wraps a sklearn ColumnTransformer; the numeric branch is
+# a Pipeline with a "scaler" step.
 num_feature_names = []
 num_transformer = None
 for name, transformer, columns in preprocessor.pipeline.transformers_:
@@ -701,6 +701,14 @@ VARIANT_FILES = {
     "M6relaxed": f"{ADV_SAVE_DIR}/lcld_neural_M6relaxed_seed{AUDIT_SEED}.parquet",
 }
 
+
+def _pass_rate(series):
+    """Return pass rate or NaN if the check could not be applied."""
+    if series is None:
+        return np.nan
+    return float(series.fillna(True).mean())
+
+
 feas_rows = []
 for vname, path in VARIANT_FILES.items():
     assert os.path.exists(path), f"Missing parquet: {path}"
@@ -711,13 +719,21 @@ for vname, path in VARIANT_FILES.items():
     # Reconstruct term from OHE so g1 (installment formula) has a raw term value.
     X_adv_raw["term"] = reconstruct_term_from_ohe(X_adv_p)
 
-    agg, per_constraint = compute_aggregate_feasibility(X_adv_raw, X_proc=X_adv_p)
+    # Per-constraint pass rates (call checks directly; the aggregator does not expose them).
+    g1 = _pass_rate(check_g1_installment(X_adv_raw, tol=G1_TOL))
+    g2 = _pass_rate(check_g2_open_total(X_adv_raw))
+    g3 = _pass_rate(check_g3_bankruptcies(X_adv_raw))
+    g4 = _pass_rate(check_g4_processed(X_adv_p))
+
+    # Aggregate: compute_aggregate_feasibility returns (all_pass_series, mean, n_constraints).
+    _, agg, _ = compute_aggregate_feasibility(X_adv_raw, X_proc=X_adv_p)
+
     feas_rows.append({
         "variant": vname,
-        "g1_installment": per_constraint["g1"],
-        "g2_open_total":  per_constraint["g2"],
-        "g3_bankruptcy":  per_constraint["g3"],
-        "g4_ohe":         per_constraint.get("g4_processed", per_constraint.get("g4", np.nan)),
+        "g1_installment": g1,
+        "g2_open_total":  g2,
+        "g3_bankruptcy":  g3,
+        "g4_ohe":         g4,
         "aggregate":      agg,
     })
 
