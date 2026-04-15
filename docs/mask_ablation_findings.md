@@ -1,7 +1,7 @@
 # Mask Ablation — Findings
 
-**Date:** 2026-04-15 (template — numbers filled after Colab run)
-**Notebook:** `notebooks/mask_ablation.ipynb`
+**Date:** 2026-04-15
+**Notebook:** `notebooks/mask_ablation.ipynb` (executed commit `0799c5f`)
 **Canonical results:** `results/adv_examples/mask_ablation/mask_ablation_summary.csv`
 **Spec:** `docs/plans/mask_ablation_experiment_plan.md`
 **Implementation plan:** `docs/plans/2026-04-15-mask-ablation-implementation.md`
@@ -10,57 +10,64 @@
 
 ## Headline numbers
 
-> Paste the contents of `mask_ablation_summary.csv` here after the Colab run completes.
-> 8 rows (M0, M1, M2, M3, M4, M5, M6strict, M6relaxed) × columns:
-> `n_mutable_mean`, `robust_pr_auc_{mean,std}`, `robust_accuracy_{mean,std}`, `robust_recall_{mean,std}`, `robust_f1_{mean,std}`, `feasibility_seed42`, `g1_pass_seed42`, `g4_pass_seed42`.
+All variants produced in the same seed loop against the same trained model per seed (no cross-run mixing). Robust metrics averaged over 3 seeds. Feasibility / g1 / g4 are seed=42 only.
 
-_(table goes here)_
+| Variant | n_mut (mean) | Robust PR-AUC | Robust Acc (mean ± std) | Feasibility | g1 pass | g4 pass |
+|---|---:|---:|---:|---:|---:|---:|
+| M0 (no mask) | 187.7 | 0.1051 ± 0.0000 | 0.0367 ± 0.0070 | 0.0005 | 0.0140 | 0.1501 |
+| M1 (binary mask) | 122.7 | 0.1051 ± 0.0000 | **0.1419 ± 0.0086** | 0.0018 | 0.0088 | 0.1673 |
+| M2 (directional) | 122.7 | 0.1051 ± 0.0000 | 0.1421 ± 0.0089 | 0.0017 | 0.0088 | 0.1691 |
+| M3 (+dti freeze) | 121.7 | 0.1051 ± 0.0000 | 0.1467 ± 0.0088 | 0.0018 | 0.0087 | 0.1694 |
+| M4 (+term freeze) | 120.7 | 0.1051 ± 0.0000 | 0.1503 ± 0.0098 | 0.0092 | 0.0092 | **1.0000** |
+| M5 (M3 ∪ M4) | 119.7 | 0.1051 ± 0.0000 | 0.1557 ± 0.0100 | 0.0078 | 0.0078 | 1.0000 |
+| **M6-strict** | 73.7 | 0.1055 ± 0.0003 | **0.3147 ± 0.0103** | 0.0069 | 0.0069 | 1.0000 |
+| M6-relaxed | 86.7 | 0.1053 ± 0.0002 | 0.2688 ± 0.0102 | 0.0082 | 0.0082 | 1.0000 |
 
 ---
 
 ## Sanity checks performed
 
-- **Baseline reproduction.** Cell 9 loads M0/M1 rows verbatim from `comparison_{unmasked,masked}.csv`. Confirmed robust metrics match the prior run to within ±0.00 (exact — we reload, we don't recompute).
-- **M2 directional clip (LCLD-specific).** `emp_length` in LCLD is OHE-encoded, not numeric. `resolve_direction_indices` is exact-match only and skips OHE categoricals, so the directional clip has no effect on LCLD. Expected: M2 robust metrics match M1 almost exactly. Cell 12's `emp_length_pct_negative` column will be NaN for M2 because no raw `emp_length` column exists in the inverse-transformed frame. A warning is printed at M2 attack time.
-- **Term freeze effect.** Cell 12 reports `term_ohe_max_abs_delta`. For M4 and M5, must be ≈ 0.
-- **Dti freeze effect.** Cell 12 reports `dti_mean_abs_delta`. For M3 and M5, must be ≈ 0.
-- **E1 scale linearity.** Cell 13 sensitivity rows at `cost_scale=2.0` must be exactly 2× the `cost_scale=1.0` rows (math check on the normalization).
-- **Feasibility aggregate math.** For every variant, `aggregate ≤ min(g1, g2, g3, g4)` — the AND of constraints cannot exceed any individual constraint's pass rate.
-
-_(verify each after Colab run; flag any that fail)_
+- **M2 ≡ M1 confirmed.** Robust accuracy difference 0.1421 − 0.1419 = 0.0002, far below the 0.009 seed-std band. The `[M2 warning]` print confirmed the directional clip matched zero OHE-expanded columns for `emp_length`, so M2 degenerates into M1's attack. Validates spec §8.2's prediction.
+- **Term freeze effect.** `term_ohe_max_abs_delta` for M4/M5/M6-strict/M6-relaxed = 0.000, for M0/M1/M2/M3 ≈ 0.079. Freeze works.
+- **Dti freeze effect.** `dti_mean_abs_delta` for M3/M5/M6-strict/M6-relaxed ≈ 1.5e-7 (float noise), for M0/M1/M2/M4 ≈ 0.99. Freeze works.
+- **E1 scale linearity.** Mean cost at `cost_scale=2.0` is exactly 2× `cost_scale=1.0` (M0: 0.459 → 0.919; M1: 0.471 → 0.941). _Note: those numbers come from the pre-fix run; see E1 caveat below._
+- **Feasibility aggregate math.** For every variant, `aggregate ≤ min(g1, g2, g3, g4)` held (trivially, since g2 = g3 = 1.0 under M1+ and g4 = 1.0 under M4+, leaving g1 as the AND bottleneck).
+- **Model-training parity.** Clean PR-AUC / clean accuracy is identical across all 8 variant rows within a seed (e.g., seed=42: clean_pr_auc=0.2974 for every variant). Confirms the train-once-per-seed optimization is correct: all variants see the same model, same data split, same preprocessor.
 
 ---
 
 ## Caveats
 
-- **Single-seed feasibility.** Feasibility, perturbation stats, and E1 are seed=42 only (per spec §4). Robust metrics are averaged over 3 seeds. Summary table's `feasibility_seed42` / `g1_pass_seed42` / `g4_pass_seed42` columns should NOT be read with a ± band.
-- **M4 g4 ≈ 1.0 is an artifact, not a capability improvement.** Freezing `term_*` OHE columns guarantees the OHE validity check passes — this does not mean CAPGD learned to produce valid OHE encodings. Framing: "freezing term recovers the aggregate feasibility that was blocked solely by g4."
-- **E1 covers numeric features, `term`, and `emp_length`.** `term` is reconstructed via `reconstruct_term_from_ohe` (gives numeric 36/60). `emp_length` is categorical/OHE in LCLD, so E1 reconstructs it via OHE-argmax — its cost contribution is effectively "changed vs unchanged" weighted by COST[emp_length]. Remaining categoricals (`purpose`, `home_ownership`, `addr_state`, `application_type`) are NOT reconstructed and contribute 0 — this is a documented E1 scope limitation.
-- **E1 normalization.** Uses p1/p99 winsorized ranges (not min/max) to tame LCLD `annual_inc` tails.
-- **Variance bands overlap for most pairs.** With 3 seeds the robust-metric std is comparable to mean differences between most (variant, variant) pairs. Only flag pairs where mean-difference exceeds the seed-level std as carrying signal.
-- **Undeclared-feature handling.** `build_processed_mutable_mask` defaults to mutable for any column not matched against the immutable set. Raw LCLD features not listed in `LCLD_IMMUTABLE_RAW` ∪ `LCLD_MUTABLE_RAW` inherit this default — same behavior as the M1 baseline, so comparisons remain apples-to-apples.
+- **Single-seed feasibility / perturbation stats / E1.** Computed on seed=42 only (per spec §4). Summary table's `feasibility_seed42` / `g1_pass_seed42` / `g4_pass_seed42` columns have no ± band.
+- **M4/M5/M6 g4 = 1.0 is structural, not a capability improvement.** Freezing `term_*` OHE columns (M4/M5) or the entire raw `term` feature (M6 via exclusion from mutable set) guarantees the OHE validity check passes by construction. Do NOT frame this as "CAPGD learned to produce valid OHE encodings" — it did not; it was prevented from touching those columns at all. Correct framing: *freezing term recovers the portion of aggregate feasibility that was blocked solely by g4*. For LCLD the g4-contribution to aggregate was ~0.01, matching the M4 aggregate exactly.
+- **E1 covers numeric features, `term`, and `emp_length`** (as binary changed/unchanged). `term` is reconstructed via `reconstruct_term_from_ohe` (gives numeric 36/60 — ordinally meaningful). `emp_length` is reconstructed via OHE-argmax but the argmax index is NOT ordinal (OHE column order is lexical: `1 year`, `10+ years`, `2 years`, ...), so `total_cost` treats it as a binary changed/unchanged indicator via `BINARY_COST_FEATURES`. Remaining categoricals (`purpose`, `home_ownership`, `addr_state`, `application_type`) are NOT reconstructed and contribute 0 — documented scope limitation.
+- **E1 numbers in this writeup are pending a Cell 13 re-run.** The committed executed notebook used a buggy `total_cost` that scaled `emp_length` by OHE-index gap. Fix applied in commit `a928eea`; once Cell 13 is re-run the corrected numbers will overwrite `e1_cost_summary.csv` and the plots. Main experiment metrics (M0–M6 robust + feasibility + perturbation stats) are unaffected.
+- **E1 normalization.** Uses p1/p99 winsorized ranges to tame LCLD `annual_inc` tails. Sensitivity verified via ×2/×0.5 scale linearity check.
+- **3-seed std is tight (0.007–0.010 on robust accuracy).** M5 − M1 = 0.014 is roughly one std band; M3/M4 differences from M1 are within the noise. Only M6-strict (+0.17) and M0 (−0.11) are robustly outside seed variance. Other pairs should be read as "indistinguishable at this sample size."
+- **M2 is structurally a no-op on LCLD.** Only `emp_length` has a natural increase-only interpretation, and LCLD encodes it as a 12-column OHE. Directional clip is exact-match only (post-fix) and skips OHE-expanded features. To actually evaluate M2 would require an ordinal encoding of `emp_length` — deferred.
+- **Undeclared-feature handling.** `build_processed_mutable_mask` defaults to mutable for any raw column not in the immutable set. The 11 raw features not listed in `LCLD_IMMUTABLE_RAW` ∪ `LCLD_MUTABLE_RAW` inherit this default — same behavior as M1 baseline, so comparisons remain internally consistent.
 - **M6 immutable set** is `dataset.X.columns - MUTABLE_PROFILE`. Verified that `dataset.X.columns` excludes the target label.
-- **M2 is structurally a no-op on LCLD.** Directionality constraints require numeric raw features, but only `emp_length` in LCLD has a natural "increase-only" interpretation and it is stored as a 12-column OHE categorical. To actually evaluate M2 would require switching to an ordinal encoding of `emp_length` — left for future work. The current M2 result is reported as-is and should be read as "= M1, as expected under categorical encoding". This confirms spec §8.2's prediction.
 
 ---
 
 ## Answers to meeting questions (spec §9)
 
-_Fill after run. Structure:_
-
-1. **Biggest marginal effect on robust accuracy?** _(compare robust_accuracy_mean: M1 vs M4 vs M5 vs M6strict)_
-2. **Does M4 lift aggregate feasibility?** _(compare aggregate: M1 vs M4; expected g4 → 1.0, aggregate jumps only if g1 was not the bottleneck)_
-3. **Attacker-capability spectrum.** _(M6strict vs M6relaxed vs M1 robust_accuracy spread)_
-4. **E1 takeaway.** _(median and p95 cost for M0 vs M1; affordable-curve shape)_
-5. **Next experiment round.** _(if M5 feasibility ≈ 0: constraint-aware attacks are required, push toward TabularBench integration; if M5 feasibility high: mask-level fixes suffice, pivot to cross-dataset)_
+1. **Biggest marginal effect on robust accuracy?** M6-strict by a wide margin. Moving from M1 (122 mutable processed features) to M6-strict (74 mutable) lifts robust accuracy from 0.142 to 0.315 — a +17.3 point gap at 10× the seed-level std. The M1 → M4 → M5 progression yields only +0.014 total, roughly one std band — mask-layer fixes alone are not a strong defense on LCLD.
+2. **Does M4 lift aggregate feasibility?** Yes, but only by the amount g4 was contributing. M1 aggregate = 0.0018; M4 aggregate = 0.0092 (+0.0074). The gain matches M4's g4=1.0 contribution exactly, because g1 is the remaining bottleneck (stays at 0.009 under every mask). Conclusion: freezing term cleans up a constraint artifact but does not produce substantively more feasible attacks because the installment formula (g1) still rejects them.
+3. **Attacker-capability spectrum.** M1 (all 11 attacker-changeable features free) → 0.142. M6-relaxed (8 self-reported features) → 0.269. M6-strict (5 form-only features) → 0.315. Clear monotone spread. A low-capability attacker is meaningfully weaker on LCLD — a +17 point robustness gap vs M1.
+4. **E1 takeaway.** Pending re-run after emp_length cost fix. Preliminary (pre-fix) numbers showed near-identical M0/M1 means (0.460 / 0.471) and identical p95 (0.514), suggesting M0 and M1 produce similarly expensive attacks at the 95th percentile even though M0 has free access to more features. Post-fix numbers will resolve whether M1's concentration on high-cost features (annual_inc, dti) keeps its median cost close to M0's spread-across-cheap-features cost.
+5. **Next experiment round.** g1 (installment formula) is the dominant unfixable barrier under any mask — it never moves above 0.015 across all variants, including M5 and M6-strict. This is strong evidence that **constraint-aware attacks** (e.g., TabularBench's CAPGDConstrained or CPGDL2) are the required next step on LCLD. Pure mask layering is saturating. Secondary: run M6-strict on CCFD/IEEE-CIS to confirm that realistic capability constraints generalize across fraud datasets.
 
 ---
 
 ## Notes on implementation corrections (during plan execution)
 
-Issues caught during subagent-driven implementation and fixed before Colab run:
+Issues caught and fixed before the canonical run:
 
-1. **`compute_metrics` signature.** Original plan called `compute_metrics(model, X, y)`; actual signature is `compute_metrics(y_true, y_probs)`. Fixed in commit `8dd7c8e`.
-2. **`compute_aggregate_feasibility` return.** Original plan unpacked `(agg, per_constraint)`; actual returns `(all_pass_series, agg_float, n_constraints)` with no per-constraint dict. Per-constraint rates now computed by calling `check_g*` functions directly. Fixed in commit `8b9d9eb`.
-3. **E1 term recovery.** `inverse_transform_numeric` does not recover OHE-encoded features. Term is now explicitly reconstructed via `reconstruct_term_from_ohe` for both clean and adversarial frames so its cost contribution is counted. Fixed in commit `ba0d6b2`.
+1. **`compute_metrics` signature.** Plan called `compute_metrics(model, X, y)`; actual signature is `compute_metrics(y_true, y_probs)`. Fixed in commit `8dd7c8e`.
+2. **`compute_aggregate_feasibility` return shape.** Plan unpacked `(agg, per_constraint)`; actual returns `(all_pass_series, agg_float, n_constraints)` with no per-constraint dict. Per-constraint rates now computed by calling `check_g*` functions directly. Fixed in commit `8b9d9eb`.
+3. **E1 term recovery.** `inverse_transform_numeric` does not recover OHE-encoded features. Term is explicitly reconstructed via `reconstruct_term_from_ohe`. Fixed in commit `ba0d6b2`.
 4. **Cell 10 missing constants.** `TOLERANCE`, `G1_TOL`, and `import re` were not extracted by the AST-only function-def copy. Added explicitly. Fixed in commit `8fae681`.
+5. **M2 direction resolver applied to OHE.** `resolve_direction_indices` prefix-matched `emp_length` to all 12 OHE columns. Changed to exact-match only with a warning if no columns matched. Fixed in commit `99c224c`.
+6. **M0/M1 apples-to-oranges.** Summary table previously mixed fresh M2–M6 rows with historical M0/M1 loaded from `comparison_*.csv`. M0/M1 now produced inside the same variant loop as M2–M6; preprocessor is always refit. Fixed in commit `9a7a634`.
+7. **E1 emp_length cost scaled by OHE-index gap.** Initial `total_cost` used `abs(a − o) / range` on the argmax indices — meaningless, since OHE column order is lexical. Switched `emp_length` to binary `(a != o)` via `BINARY_COST_FEATURES`. Fixed in commit `a928eea`. **Requires Cell 13 re-run to refresh E1 outputs.**
