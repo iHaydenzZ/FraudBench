@@ -615,9 +615,23 @@ Copy into one new cell, from `tabularbench_comparison.ipynb`:
 - `reconstruct_term_from_ohe` (Cell 12 body).
 - `compute_aggregate_feasibility` (Cell 13 body).
 
-DO NOT modify the functions. At the end of the cell add:
+DO NOT modify the functions. Before the final print line, append `reconstruct_ohe_argmax` (needed by Cell 12):
 
 ```python
+
+
+def reconstruct_ohe_argmax(X_proc: pd.DataFrame, prefix: str) -> pd.Series:
+    """Reconstruct a categorical feature as an integer category index via OHE argmax.
+
+    Returns a Series of integer indices (NOT ordered labels). The index values
+    are arbitrary (OHE column order is lexical, not ordinal), so consumers
+    must compare with (a != o) rather than abs(a - o).
+    """
+    cols = [c for c in X_proc.columns if c.startswith(f"{prefix}_")]
+    if not cols:
+        return pd.Series(np.nan, index=X_proc.index)
+    return pd.Series(X_proc[cols].values.argmax(axis=1), index=X_proc.index)
+
 print("Feasibility audit functions loaded.")
 ```
 
@@ -750,44 +764,68 @@ git commit -m "feat(notebook): run feasibility audit across all mask variants"
 
 ```python
 # Cell 12: Perturbation statistics per variant (seed=42)
+#
+# Compute two things per numeric feature: mean |raw delta| and pct_changed.
+# "Changed" is decided in PROCESSED space with threshold > 1e-4 to exclude
+# float32/float64 round-trip noise from inverse_transform_numeric. Using raw
+# space with 1e-6 threshold mis-reports immutable features as "changed" for
+# ~76% of rows due to scaler round-trip.
+#
+# emp_length is OHE in LCLD, so we report changed/unchanged via OHE argmax.
+# The M2 raw-direction sanity check was removed: it required ordinal
+# emp_length, which this preprocessor does not provide.
+
 KEY_FEATURES = [
     "loan_amnt", "annual_inc", "dti", "emp_length",
     "int_rate", "installment",
 ]
+# Absolute threshold in PROCESSED (StandardScaler) space. scaler stds vary by
+# feature, so 1e-4 in processed units is roughly 1e-4 * std in raw units —
+# well below any attack-induced delta but above round-trip float noise.
+CHANGED_THRESHOLD_PROC = 1e-4
 
-# Original (clean) raw features for seed=42 are X_test; processed equivalent is X_test_p
-X_test_raw_scaled = X_test_p  # processed (scaled + OHE)
 X_test_raw = inverse_transform_numeric(X_test_p, num_feature_names, scaler)
+# emp_length raw reconstruction via OHE argmax (binary comparisons only).
+X_test_raw["emp_length"] = reconstruct_ohe_argmax(X_test_p, "emp_length")
 
 pert_rows = []
 for vname, path in VARIANT_FILES.items():
     X_adv_p = pd.read_parquet(path)
     X_adv_raw = inverse_transform_numeric(X_adv_p, num_feature_names, scaler)
+    X_adv_raw["emp_length"] = reconstruct_ohe_argmax(X_adv_p, "emp_length")
 
     row = {"variant": vname}
     for feat in KEY_FEATURES:
-        if feat in X_test_raw.columns and feat in X_adv_raw.columns:
-            delta = (X_adv_raw[feat] - X_test_raw[feat]).abs()
-            row[f"{feat}_mean_abs_delta"] = delta.mean()
-            row[f"{feat}_pct_changed"] = (delta > 1e-6).mean()
-        else:
+        if feat not in X_test_raw.columns or feat not in X_adv_raw.columns:
             row[f"{feat}_mean_abs_delta"] = np.nan
             row[f"{feat}_pct_changed"] = np.nan
+            continue
 
-    # Term OHE: report max absolute delta across term_* columns in processed space
+        if feat == "emp_length":
+            # Binary: argmax index changed or not (see reconstruct_ohe_argmax note).
+            changed = (X_adv_raw[feat] != X_test_raw[feat])
+            row[f"{feat}_mean_abs_delta"] = np.nan  # index distance not meaningful
+            row[f"{feat}_pct_changed"] = float(changed.mean())
+            continue
+
+        # Numeric: raw-space mean delta for human readability,
+        # processed-space threshold for pct_changed to avoid round-trip noise.
+        raw_delta = (X_adv_raw[feat] - X_test_raw[feat]).abs()
+        row[f"{feat}_mean_abs_delta"] = float(raw_delta.mean())
+        if feat in X_adv_p.columns and feat in X_test_p.columns:
+            proc_delta = (X_adv_p[feat] - X_test_p[feat]).abs()
+            row[f"{feat}_pct_changed"] = float((proc_delta > CHANGED_THRESHOLD_PROC).mean())
+        else:
+            row[f"{feat}_pct_changed"] = np.nan
+
+    # Term OHE: max absolute delta across term_* columns in processed space.
     term_cols = [c for c in X_adv_p.columns if c.startswith("term_")]
     if term_cols:
-        row["term_ohe_max_abs_delta"] = (
+        row["term_ohe_max_abs_delta"] = float(
             (X_adv_p[term_cols] - X_test_p[term_cols]).abs().max(axis=1).mean()
         )
     else:
         row["term_ohe_max_abs_delta"] = np.nan
-
-    # M2-specific sanity: emp_length deltas should be >= 0 (increase-only)
-    if vname == "M2" and "emp_length" in X_adv_raw.columns:
-        raw_delta = X_adv_raw["emp_length"] - X_test_raw["emp_length"]
-        row["emp_length_min_raw_delta"] = raw_delta.min()
-        row["emp_length_pct_negative"] = (raw_delta < -1e-6).mean()
 
     pert_rows.append(row)
 
@@ -839,20 +877,6 @@ for feat in FEATURE_COSTS:
     else:
         # Categorical: range = 1.0 so an OHE-changed feature contributes exactly COST[f]
         feature_ranges[feat] = 1.0
-
-
-def reconstruct_ohe_argmax(X_proc: pd.DataFrame, prefix: str) -> pd.Series:
-    """Reconstruct a categorical feature as an integer category index via OHE argmax.
-
-    Returns a Series of integer indices (NOT ordered labels). The index values
-    are arbitrary (OHE column order is lexical, not ordinal), so consumers
-    must compare with (a != o) rather than abs(a - o). Enforced in
-    total_cost() via BINARY_COST_FEATURES.
-    """
-    cols = [c for c in X_proc.columns if c.startswith(f"{prefix}_")]
-    if not cols:
-        return pd.Series(np.nan, index=X_proc.index)
-    return X_proc[cols].values.argmax(axis=1)
 
 
 def attach_reconstructed_categoricals(X_raw: pd.DataFrame, X_proc: pd.DataFrame) -> pd.DataFrame:
