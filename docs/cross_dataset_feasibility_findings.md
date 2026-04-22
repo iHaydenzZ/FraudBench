@@ -33,18 +33,50 @@ The empirical ordering by adversarial feasibility (ascending = more restrictive)
 
 The three constrained datasets cluster tightly below 1% adv feasibility; CCFD stands alone at 100%. IEEE-CIS — framed in the guidance doc as "Low" constraint richness — is empirically the most restrictive of the four.
 
-### Why IEEE-CIS filters hardest
+### Why IEEE-CIS filters hardest — and what actually does the work
 
-CAPGD at ε=0.1 in processed space simultaneously breaks:
-- OHE validity of three separate categoricals: ProductCD, card4, card6 (each a g4-style check)
-- Non-negativity of C1–C14 (14 columns ANDed)
-- Non-negativity of D1–D15 (15 columns ANDed)
+Per-constraint decomposition (Cell 14, 2026-04-22 re-run) shows the per-constraint pass rates on IEEE-CIS are:
 
-Six cheap per-row boolean checks ANDed together filter harder than one nonlinear formula does in isolation. The paper's original "richness" framing — which assumed constraint *strength* dominates — missed that constraint *count* also matters, and that high-dimensional OHE expansions implicitly create many cheap constraints.
+| Constraint        | Clean | Adv   | Drop  |
+|-------------------|------:|------:|------:|
+| `i_product_ohe`   | 1.000 | 0.018 | 0.982 |
+| `i_card4_ohe`     | 1.000 | 0.048 | 0.952 |
+| `i_card6_ohe`     | 1.000 | 0.206 | 0.794 |
+| `i_d_nonneg`      | 1.000 | 0.486 | 0.514 |
+| `i_amt_positive`  | 1.000 | 1.000 | 0.000 |
+| `i_c_nonneg`      | 1.000 | **1.000** | 0.000 |
+
+The dominance is **OHE validity, not non-negativity.** C1–C14 non-negativity is fully preserved (1.000) — StandardScaler centering means CAPGD's ε=0.1 perturbations in scaled space don't push raw-space C-counts negative. D1–D15 non-negativity drops modestly (0.486). The three OHE checks (ProductCD, card4, card6) are what produce the 0.014% aggregate. A-priori we expected "many cheap checks ANDed together" — that's still right, but the cheap checks that matter are OHE-validity, not non-negativity.
+
+### Sparkov: same story
+
+| Constraint        | Clean | Adv   | Drop   |
+|-------------------|------:|------:|-------:|
+| `s_state_ohe`     | 1.000 | 0.0002 | 0.9998 |
+| `s_category_ohe`  | 1.000 | 0.017 | 0.983  |
+| `s_gender_ohe`    | 1.000 | 0.265 | 0.735  |
+| `s_merch_bbox`    | 0.993 | 0.992 | 0.001  |
+| `s_city_pop_pos`  | 1.000 | 1.000 | 0.000  |
+| `s_amt_positive`  | 1.000 | 1.000 | 0.000  |
+
+The merchant bounding-box (the constraint we expected to dominate per `constraint_evaluation_guidance.md` §3.4) drops only 0.993 → 0.992 — CAPGD's ε in scaled space barely shifts continental-scale lat/long. The actual filter is again three OHE checks (state with 50 categories is the binding one at 0.0002 adv pass).
+
+### LCLD per-constraint (for reference)
+
+| Constraint        | Clean | Adv   | Drop  |
+|-------------------|------:|------:|------:|
+| `g1_installment`  | 0.998 | 0.012 | 0.986 |
+| `g4_term_ohe`     | 1.000 | 0.185 | 0.815 |
+| `g3_bankruptcy`   | 0.962 | 0.692 | 0.270 |
+| `g2_open_total`   | 0.997 | 0.983 | 0.013 |
+
+g1 (formula) leads but `g4_term_ohe` is the second-most-binding — same OHE pattern as IEEE-CIS and Sparkov.
 
 ### Refined thesis for the paper
 
-The binary **presence vs absence** of any domain structure is the real dichotomy. Within the constrained group (LCLD, IEEE-CIS, Sparkov) the exact adv feasibility rate is a function of how many independent OHE / non-negativity / range checks the preprocessing pipeline exposes, not of whether the dataset carries a nonlinear formula constraint. Recommendation for §4: collapse the three-tier gradient table to two tiers ("Constrained — any structure" vs "Unconstrained — statistical only") and back the tiering with the table above rather than a-priori constraint counts.
+The binary **presence vs absence** of any domain structure remains the real dichotomy at the dataset level. Within the constrained group, the per-constraint decomposition reveals a stronger claim: **OHE-validity is the universal binding constraint at ε=0.1.** It's the cheapest constraint to detect (single argmax check) and the hardest for unconstrained CAPGD to satisfy — because preprocessing distributes attack budget across all OHE columns equally, never producing a clean one-hot. Non-negativity, range, and bounding-box constraints are largely preserved because raw-space distributional centering (StandardScaler with mean ≫ 0 for counts) protects them.
+
+Recommendation for §4: keep the binary "Constrained — any structure" vs "Unconstrained — statistical only" tiering, but in the per-dataset narrative, replace "C/D non-negativity" claims with OHE-validity claims; replace Sparkov's geo-bbox claim with OHE-validity. The single-most-paper-worthy fact in this audit is that **CAPGD breaks OHE validity on every constrained dataset** — an attack-mode finding that generalizes the LCLD g4 result.
 
 ---
 
@@ -84,7 +116,7 @@ The seed-level std on LCLD robust PR-AUC is 0.0000 (three-significant-figure pre
 
 1. **LCLD clean feasibility is unexpectedly low: 0.9564 ± 0.0594** (tabularbench_comparison run reported 0.9968 with identical g1 tolerance). The 0.0594 std implies at least one of the three seeds fell below ~0.90. Hypothesis: a sparse categorical (`addr_state` or `purpose`) has a category present in test but not train for one seed, causing all-zero OHE rows that fail the g4-style OHE-sum check. Need per-seed inspection of `results_df[results_df["dataset"]=="lcld"]`.
 
-2. **Per-constraint decomposition not yet reported.** The results CSV has per-constraint columns (`adv_g1_installment`, `adv_i_c_nonneg`, `adv_s_merch_bbox`, …) but only the aggregate was printed. Without the decomposition we cannot confirm which constraint actually dominates for IEEE-CIS and Sparkov — essential for §4 of the paper. Minimal fix: add a cell that groups the `clean_*_` / `adv_*_` per-constraint columns by dataset and prints means.
+2. ~~**Per-constraint decomposition not yet reported.**~~ **CLOSED 2026-04-22** by `notebooks/cross_dataset_feasibility.ipynb` Cell 14 (added in commit `c247aa4`). Output saved to `cross_dataset_per_constraint.csv`. Per-dataset binding constraints are: lcld→`g1_installment` (0.012), ieee_cis→`i_product_ohe` (0.018), sparkov→`s_state_ohe` (0.0002), ccfd→none (1.000). The decomposition revealed two corrections to the earlier narrative (OHE dominates IEEE-CIS, not C/D non-negativity; OHE dominates Sparkov, not geo-bbox) — incorporated into the "Why IEEE-CIS filters hardest" and "Sparkov: same story" sections above.
 
 3. **CCFD robust PR-AUC std = 0.2262 is unstable.** Clean PR-AUC is stable (0.6330) but robust PR-AUC swings seed-to-seed from near-clean to collapsed. Likely cause: training-init variance on 0.17% positive class with only 20 epochs. Needs either more seeds or more epochs specifically for CCFD. At minimum, flag in the paper.
 

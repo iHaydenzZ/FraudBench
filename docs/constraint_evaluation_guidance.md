@@ -197,14 +197,20 @@ Requires domain knowledge sufficient to write mathematical constraint functions.
 
 The original a-priori "richness gradient" (LCLD ≫ Sparkov > IEEE-CIS ≫ CCFD) did not hold under the cross-dataset feasibility audit (`cross_dataset_feasibility_findings.md`, 2026-04-22). The empirical ordering, by adversarial feasibility under stock CAPGD at ε=0.1, is shown below; the table is reordered ascending by adv feasibility (most restrictive first).
 
-| Dataset | Tier A (Capability) | Tier B (Structure) | Tier C (Formula) | **Empirical adv feas** | A-priori "richness" | Dominant binding constraint |
-|---------|---------------------|--------------------|------------------|-----------------------:|---------------------|------------------------------|
-| **IEEE-CIS** | TransactionAmt/ProductCD mutable; card/V immutable | C1–C14 non-negativity, D1–D15 non-negativity, ProductCD/card4/card6 OHE validity | None (V opaque) | **0.014%** | "Low" | OHE + non-negativity (~6 cheap checks ANDed) |
-| **LCLD**     | 11 mutable / 41 immutable; M6-strict → +18pp robust acc | g2/g3 inequalities, g4 OHE | **g1 (installment formula)** — 99% adv-failure | **0.093%** | "Very High" | g1 (nonlinear coupling) |
-| **Sparkov**  | amt/category/merch mutable; cardholder attrs immutable | Geo-consistency (ZIP↔lat/long), category↔amt range | None | **0.38%** | "Moderate" | Geo + categorical |
+| Dataset | Tier A (Capability) | Tier B (Structure) | Tier C (Formula) | **Empirical adv feas** | A-priori "richness" | **Empirical binding constraint** (lowest adv pass) |
+|---------|---------------------|--------------------|------------------|-----------------------:|---------------------|----------------------------------------------------|
+| **IEEE-CIS** | TransactionAmt/ProductCD mutable; card/V immutable | ProductCD/card4/card6 OHE validity (binding); D1–D15 non-negativity (modest); C1–C14 non-negativity (preserved) | None (V opaque) | **0.014%** | "Low" | `i_product_ohe` (0.018 adv pass) — 3 OHE checks dominate; C-nonneg passes 1.000 |
+| **LCLD**     | 11 mutable / 41 immutable; M6-strict → +18pp robust acc | g2/g3 inequalities, g4 OHE | **g1 (installment formula)** — 99% adv-failure | **0.093%** | "Very High" | `g1_installment` (0.012); `g4_term_ohe` second (0.185) |
+| **Sparkov**  | amt/category/merch mutable; cardholder attrs immutable | state/category/gender OHE (binding); merch lat/long bbox (preserved) | None | **0.38%** | "Moderate" | `s_state_ohe` (0.0002) — geo-bbox passes 0.992 |
 | **CCFD**     | Amount mutable; V1–V28 immutable | None (PCA anonymised) | None | **100%** | "Very Low" | None |
 
-**Empirical finding.** IEEE-CIS — framed a-priori as "Low" — is empirically the *most* restrictive, an order of magnitude tighter than LCLD's 0.093%. The discriminating factor is not constraint *strength* but *count*: many cheap per-row checks ANDed together (OHE + non-negativity, exposed automatically by the preprocessing pipeline) filter harder than a single nonlinear formula in isolation. The three constrained datasets cluster <1%; CCFD stands alone at 100%.
+**Empirical finding.** IEEE-CIS — framed a-priori as "Low" — is empirically the *most* restrictive, an order of magnitude tighter than LCLD's 0.093%. The per-constraint decomposition (`cross_dataset_feasibility_findings.md`, 2026-04-22 update) reveals that the discriminating factor across constrained datasets is the **count of OHE-validity checks**, not non-negativity, geo-bbox, or formula constraints:
+
+- **OHE-validity is the universal binding constraint at ε=0.1.** It's the cheapest constraint to detect (single argmax per OHE block) and the hardest for unconstrained CAPGD to satisfy: preprocessing distributes attack budget across all OHE columns equally, never producing a clean one-hot. IEEE-CIS has 3 (ProductCD/card4/card6 → 0.018/0.048/0.206 adv pass), Sparkov has 3 (state/category/gender → 0.0002/0.017/0.265), LCLD has 1 (term → 0.185 adv pass — second-most-binding after g1).
+- **Non-negativity, range, and bounding-box constraints are largely preserved.** C1–C14 non-negativity passes 1.000 because StandardScaler centering keeps perturbations comfortably above zero in raw space; merchant lat/long bbox passes 0.992 because ε in scaled space barely shifts continental-scale coordinates.
+- **Formula constraints (LCLD g1) are dataset-specific** and dominate where they exist (0.012 adv pass), but the cross-dataset evidence shows they are *not* what makes the constrained datasets restrictive in general — OHE-validity does that work everywhere.
+
+The three constrained datasets cluster <1%; CCFD stands alone at 100%.
 
 **Refined paper claim.** Collapse the four-tier richness ordering to a binary dichotomy:
 
@@ -321,3 +327,4 @@ The three-tier framework maps cleanly to paper sections:
 | Collapse 4-tier richness gradient to binary "constrained vs unconstrained" | Phase 1 cross-dataset audit refuted the a-priori ordering (IEEE-CIS most restrictive, not LCLD). Empirical data clusters <1% vs 100% — a binary dichotomy is the empirically supported claim. | 2026-04-22 |
 | Headline finding = constraint-aware attack vs post-hoc filtering equivalence (not the ADV/ADV+CTR gap) | Phase 3 + M1+g1 follow-up shows post-hoc filtering rejects 99.95% of attacks but constraint-aware generation produces ~2774× more useful attacks. The gap measured attack-generation inefficiency, not defender safety. | 2026-04-22 |
 | M1+g1 retrains the model per seed (different init from Cell 10) — accept as caveat rather than refactor | Filtered-success rate is a within-row ratio so the headline result is unaffected. Refactoring to share models is engineering effort with no scientific gain. | 2026-04-22 |
+| Replace "C/D non-negativity / geo-bbox dominate" with "OHE-validity is the universal binding constraint" | Per-constraint decomposition (cross-dataset Cell 14, 2026-04-22) showed C-nonneg passes 1.000 on IEEE-CIS and merch-bbox passes 0.992 on Sparkov; the actual binding constraints are OHE-validity checks on every constrained dataset. The "many cheap checks ANDed" framing still holds — the *type* of cheap check is OHE, not non-negativity. | 2026-04-22 |
