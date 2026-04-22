@@ -1,23 +1,25 @@
 # FraudBench Constraint-Aware Evaluation: Strategic Guidance
 
-**Date:** 2026-04-15  
-**Status:** Internal guidance document  
-**Target venue:** ICAIF 2026 (~July deadline, 8-page ACM format)  
-**Prerequisites:** TabularBench comparison findings, Mask ablation findings (both verified)
+**Date:** 2026-04-15 (last updated 2026-04-22)
+**Status:** Internal guidance document
+**Target venue:** ICAIF 2026 (~July deadline, 8-page ACM format)
+**Prerequisites:** TabularBench comparison findings, Mask ablation findings, **Cross-dataset feasibility findings (Phase 1, 2026-04-22)**, **g1-projection findings (Phase 3 + M1+g1, 2026-04-22)**
 
 ---
 
 ## 1. Executive Summary
 
-FraudBench's next experimental phase centres on **constraint-aware evaluation** — the idea that adversarial robustness on financial tabular data must account for domain constraints, attacker capabilities, and feature semantics. Our completed experiments establish three foundational results:
+FraudBench's constraint-aware evaluation effort tests the hypothesis that adversarial robustness on financial tabular data must account for domain constraints, attacker capabilities, and feature semantics. As of 2026-04-22 the following results are established:
 
-1. **Constraint gap:** ~99.8% of CAPGD adversarial examples on LCLD are domain-infeasible (aggregate feasibility 0.14–0.22%), driven almost entirely by the g1 installment formula (~98% failure rate). This produces the largest ADV/ADV+CTR gap (+55 pp) on the LCLD leaderboard.
+1. **Constraint-aware attacks vs post-hoc filtering are not equivalent (the headline finding).** Stock CAPGD on LCLD produces 99.95% domain-infeasible adversarial examples (filtered success = 0.05%). Replacing the attack with a g1-formula-projected variant at the same ε keeps the flipped-prediction count unchanged (≤2-flip delta on the same model) while raising filtered success to **50.2%**. Adding the M1 mutability mask raises it further to **95.3%** — 2774 feasible-and-flipped attacks per seed vs 1 under stock CAPGD, a **~2000× underestimate** of realistic attacker success. The +55pp ADV/ADV+CTR gap (`tabularbench_comparison_findings.md`) measures attack-generation inefficiency, not defender safety. (`g1_projection_findings.md`)
 
-2. **Capability spectrum:** Mask ablation (M0→M6-strict) yields a monotone robust accuracy gradient from 0.042 to 0.340 (+29.8 pp), confirming that realistic attacker-capability modelling materially changes robustness assessment. However, robust PR-AUC remains locked at 0.1051 ± 0.0001 across all eight variants — capability constraints improve accuracy but not the precision-recall trade-off under attack.
+2. **Empirical "constraint richness" is binary, not a gradient.** Three of four datasets (IEEE-CIS, LCLD, Sparkov) cluster below 1% adversarial feasibility under stock CAPGD; CCFD stands alone at 100%. The most restrictive is **IEEE-CIS at 0.014% adv feas** — *not* LCLD as the a-priori "richness" framing predicted — because high-dimensional OHE expansions implicitly create many cheap per-row checks that, ANDed together, filter harder than a single nonlinear formula in isolation. The paper claim should be a binary dichotomy ("any structure" vs "statistical only"), not a 4-tier ordering. (`cross_dataset_feasibility_findings.md`)
 
-3. **Metric sensitivity:** Accuracy-based ranking on imbalanced fraud data produces substantially different model orderings than F1/MCC (Kendall's τ < 0.74), with 10/70 degenerate TabNet models unpenalised by accuracy.
+3. **Capability spectrum.** Mask ablation (M0→M6-strict) yields a monotone robust accuracy gradient from 0.042 to 0.340 (+29.8 pp), confirming that realistic attacker-capability modelling materially changes robustness assessment. Robust PR-AUC remains locked at **0.1051 ± 0.0001 across six independent experimental axes** (8 mask variants, 3 cross-dataset seeds, 3 g1-projection regimes) — capability and constraint regimes improve robust accuracy but not the precision-recall rank ordering at LCLD ε=0.1.
 
-The central challenge for the next phase: **only LCLD has strong mathematical constraints (g1)**. CCFD features are PCA-anonymised; IEEE-CIS V-features are opaque; Sparkov is synthetic with limited documentation. This is not a weakness — it is the empirical basis for a **constraint richness gradient** that itself constitutes a benchmark contribution.
+4. **Metric sensitivity.** Accuracy-based ranking on imbalanced fraud data produces substantially different model orderings than F1/MCC (Kendall's τ < 0.74), with 10/70 degenerate TabNet models unpenalised by accuracy.
+
+The original framing positioned LCLD as the "Very High" constraint anchor with other datasets degrading gracefully along a richness gradient. The cross-dataset audit refuted that gradient, but the central thesis — *constraints matter, methodology is dataset-dependent, and constraint-aware attacks reveal an attack surface that post-hoc filtering hides* — is **strengthened** by the binary result and the M1+g1 progression.
 
 ---
 
@@ -191,44 +193,60 @@ Requires domain knowledge sufficient to write mathematical constraint functions.
 
 ---
 
-## 4. Constraint Richness Gradient — Summary Table
+## 4. Constraint Richness — A-Priori vs Empirical
 
-| Dataset | Tier A (Capability) | Tier B (Structure) | Tier C (Formula) | Constraint Richness | Dominant Constraint |
-|---------|--------------------|--------------------|------------------|--------------------|--------------------|
-| **LCLD** | 11 mutable / 41 immutable features; M6-strict → +18pp robust acc | g2 (inequality), g3 (inequality), g4 (discrete validity) | **g1 (installment formula)** — 98% failure rate | **Very High** | g1 (nonlinear coupling) |
-| **Sparkov** | amt/category/merch_loc mutable; cardholder attrs immutable | Geo-consistency (ZIP↔lat/long), category↔amount range | None | **Moderate** | Geo-consistency (lookup) |
-| **IEEE-CIS** | TransactionAmt/ProductCD mutable; card/V-features immutable | C-feature non-negativity, D-feature non-negativity, categorical validity | None (V-features opaque) | **Low** | Categorical validity |
-| **CCFD** | Amount only mutable; V1–V28 immutable | None (PCA anonymised) | None | **Very Low** | None (statistical plausibility only) |
+The original a-priori "richness gradient" (LCLD ≫ Sparkov > IEEE-CIS ≫ CCFD) did not hold under the cross-dataset feasibility audit (`cross_dataset_feasibility_findings.md`, 2026-04-22). The empirical ordering, by adversarial feasibility under stock CAPGD at ε=0.1, is shown below; the table is reordered ascending by adv feasibility (most restrictive first).
 
-**Paper narrative:** *"FraudBench deliberately includes datasets spanning the full constraint richness spectrum, from LCLD (rich mathematical constraints, ~0.1% adversarial feasibility) to CCFD (no interpretable constraints, unconstrained attacks provide the only feasible threat assessment). This gradient demonstrates that the appropriate evaluation methodology is dataset-dependent — a finding absent from both TabularBench (which evaluates all datasets with the same constraint-aware attack) and prior fraud detection benchmarks (which ignore constraints entirely)."*
+| Dataset | Tier A (Capability) | Tier B (Structure) | Tier C (Formula) | **Empirical adv feas** | A-priori "richness" | Dominant binding constraint |
+|---------|---------------------|--------------------|------------------|-----------------------:|---------------------|------------------------------|
+| **IEEE-CIS** | TransactionAmt/ProductCD mutable; card/V immutable | C1–C14 non-negativity, D1–D15 non-negativity, ProductCD/card4/card6 OHE validity | None (V opaque) | **0.014%** | "Low" | OHE + non-negativity (~6 cheap checks ANDed) |
+| **LCLD**     | 11 mutable / 41 immutable; M6-strict → +18pp robust acc | g2/g3 inequalities, g4 OHE | **g1 (installment formula)** — 99% adv-failure | **0.093%** | "Very High" | g1 (nonlinear coupling) |
+| **Sparkov**  | amt/category/merch mutable; cardholder attrs immutable | Geo-consistency (ZIP↔lat/long), category↔amt range | None | **0.38%** | "Moderate" | Geo + categorical |
+| **CCFD**     | Amount mutable; V1–V28 immutable | None (PCA anonymised) | None | **100%** | "Very Low" | None |
+
+**Empirical finding.** IEEE-CIS — framed a-priori as "Low" — is empirically the *most* restrictive, an order of magnitude tighter than LCLD's 0.093%. The discriminating factor is not constraint *strength* but *count*: many cheap per-row checks ANDed together (OHE + non-negativity, exposed automatically by the preprocessing pipeline) filter harder than a single nonlinear formula in isolation. The three constrained datasets cluster <1%; CCFD stands alone at 100%.
+
+**Refined paper claim.** Collapse the four-tier richness ordering to a binary dichotomy:
+
+- **Constrained — any domain structure** (IEEE-CIS, LCLD, Sparkov): post-hoc feasibility filtering rejects ≥99% of unconstrained CAPGD output. Evaluation requires either (a) constraint-aware attacks, or (b) explicit reporting that the unconstrained robust metric overstates real attack success.
+- **Unconstrained — statistical plausibility only** (CCFD): no domain constraint filters the attack output meaningfully. Tier A (capability-aware) is the only useful evaluation layer; constraint-aware methods provide no additional signal here.
+
+This dichotomy is supported empirically (one column, four numbers) and is a stronger paper position than the original a-priori gradient.
+
+**Paper narrative (revised):** *"FraudBench includes datasets spanning the full domain-constraint spectrum, from IEEE-CIS (many cheap structural constraints, 0.014% adv feasibility) and LCLD (one nonlinear formula constraint, 0.093%) to CCFD (no domain constraint applies, 100% feasibility). The cluster <1% vs 100% binary structure demonstrates that constraint-aware evaluation is necessary on three of four datasets and insufficient/inapplicable on the fourth — a methodology choice that is dataset-dependent. This is absent from both TabularBench (which uses the same constraint-aware attack on all datasets) and prior fraud detection benchmarks (which ignore constraints entirely)."*
+
+**Note on the constraint-aware attack result (LCLD only).** The above table reports stock CAPGD adv feasibility. On LCLD, replacing stock CAPGD with g1-projected CAPGD raises adv feasibility from 0.093% to 69.3% at the same ε, and adding the M1 mutability mask raises it to 95.8% — see §1 result #1 and `g1_projection_findings.md`. IEEE-CIS / Sparkov have not been subjected to the equivalent structure-aware attack (Phase 2 work, partially obsoleted as motivation but still valuable as cross-dataset evidence — see §5).
 
 ---
 
 ## 5. Experimental Roadmap
 
-### Phase 1: Zero-Cost Extensions (no new compute)
+### Phase 1: Zero-Cost Extensions — **DONE (2026-04-22)**
 
-| Experiment | Dataset(s) | What it produces | Effort |
-|-----------|-----------|-----------------|--------|
-| **Cross-dataset feasibility audit** | CCFD, IEEE-CIS, Sparkov | Feasibility rate table across the gradient; confirms CCFD ≈ 100% feasibility (no constraints filter anything) | ~1 day (reuse existing adv examples + new constraint checkers) |
-| **Cross-attack robustness transfer** | All 4 | Test AT-trained models against SquareAttack/HopSkipJump; separate from transfer learning | ~1 day (existing models + existing attack code) |
-| **Degenerate model audit on FraudBench** | All 4 | Check if any FraudBench model has MCC ≈ 0 | ~0.5 day |
+| Experiment | Status | Outcome |
+|-----------|--------|---------|
+| **Cross-dataset feasibility audit** | ✅ **Done** | `cross_dataset_feasibility_findings.md`. Refuted the a-priori richness gradient: empirical ordering is IEEE-CIS (0.014%) < LCLD (0.093%) < Sparkov (0.38%) ≪ CCFD (100%). Resulting refined thesis (binary presence/absence) folded into §1 and §4. |
+| **Cross-attack robustness transfer** | Pending | Not yet run. Lower priority than Phase 2/3 follow-ups. |
+| **Degenerate model audit on FraudBench** | Pending | Lower priority. |
 
-### Phase 2: Tier A/B Implementation (~1–2 weeks)
+### Phase 2: Tier A/B Implementation — **partially obsoleted as motivation, still valuable as cross-dataset evidence**
 
-| Experiment | Dataset(s) | What it produces | Effort |
-|-----------|-----------|-----------------|--------|
-| **M6-strict cross-dataset** | CCFD, IEEE-CIS, Sparkov | Validates whether capability-based evaluation generalises across datasets; requires defining mutable/immutable partitions per dataset | ~3 days (define partitions + run attacks) |
-| **Sparkov geo-consistency checker** | Sparkov | Implements ZIP↔lat/long lookup constraint; measures feasibility rate of existing adversarial examples | ~2 days |
-| **IEEE-CIS categorical + count validity** | IEEE-CIS | Implements i1–i6 + C-feature integrality; measures feasibility rate | ~1 day |
-| **Mutability mask standardisation** | All 4 | Formalise ConstraintSchema to include mutable/immutable annotations | ~2 days (code refactor) |
+The Phase 1 audit refuted the tiered framework Phase 2 was designed to support, so the original *motivation* (filling out a 3-tier table) no longer applies. However, running constraint-aware attacks on IEEE-CIS / Sparkov would directly test whether the M1+g1-style "constraint-aware attack recovers the apparent strength loss" pattern (Phase 3 finding) generalizes beyond LCLD. That generalization is the strongest version of the paper's headline claim.
 
-### Phase 3: Tier C — Constraint-Aware Attack on LCLD (~2 weeks)
+| Experiment | Status | Notes |
+|-----------|--------|-------|
+| **M-mask + structure-projection on IEEE-CIS** | Pending | Most valuable next step. IEEE-CIS has no formula constraint but rich OHE/non-negativity structure — project onto C/D non-negativity + ProductCD/card4/card6 OHE validity each step. Expected pattern: filtered success goes from 0.014% to >50% with attack power preserved. |
+| **M-mask + structure-projection on Sparkov** | Pending | Geo-consistency projection (snap merch_lat/merch_long to nearest valid coordinate) is implementable but lower priority than IEEE-CIS. |
+| **Per-constraint decomposition on IEEE-CIS / Sparkov** | Open flag | Already in the cross-dataset CSV; just needs an analysis cell to print per-constraint means. Cited in `cross_dataset_feasibility_findings.md` §Open flags #2. |
+| **Mutability mask standardisation** | Deferred | Mask logic lives in `mask_ablation.ipynb` Cell 6; promote to library only if Phase 2 cross-dataset attacks materialize. |
 
-| Experiment | What it produces | Effort |
-|-----------|-----------------|--------|
-| **Penalty-based projection for g1** | After each CAPGD step, recalculate installment = f(loan_amnt, int_rate, term). Measures: (a) g1 pass rate improvement, (b) attack success rate under constraint, (c) robust PR-AUC with feasible-only adversarial examples | ~5 days (implement projection step in attack loop) |
-| **Constrained vs unconstrained systematic comparison** | Reframe existing 182 runs as "unconstrained"; compare with constrained results from above | ~2 days (analysis notebook) |
+### Phase 3: Tier C — Constraint-Aware Attack on LCLD — **DONE (2026-04-22)**
+
+| Experiment | Status | Outcome |
+|-----------|--------|---------|
+| **Per-step g1 projection for CAPGD** | ✅ **Done** | `g1_projection_findings.md`. Same flipped-prediction count as stock CAPGD (≤2-flip delta same-model); filtered success 0.05% → 50.2%. |
+| **M1 mask + g1 projection (follow-up)** | ✅ **Done** | Same doc. Closes g3 credit-bureau gap; filtered success 0.05% → 50.2% → **95.3%**. Includes float64 installment re-derivation fix (commit `adcd78d`). |
+| **Constrained vs unconstrained systematic comparison** | ✅ **Done** | Same trained model per seed for the unconstrained vs g1-projected pair; M1+g1 retrains (between-model caveat documented). |
 
 ### Phase 4: Novel Defence — Fraud-Aware AT (if time permits)
 
@@ -237,17 +255,27 @@ Requires domain knowledge sufficient to write mathematical constraint functions.
 | **Per-feature ε allocation** | Allocate perturbation budget proportional to feature mutability + cost during adversarial training | ~1 week |
 | **Cost-sensitive weighting** | Higher AT weight for high-value transactions | ~3 days |
 
+### Soft blockers before paper table is final
+
+1. **Seed-42 sparse-categorical issue on LCLD** (`cross_dataset_feasibility_findings.md` §Open flags #1; `g1_projection_findings.md` Caveat #1). One sparse categorical (likely `addr_state` or `purpose`) has a test-only value in the seed-42 stratified split, capping seed-42 clean-feasibility at 0.888 vs ~0.991 on the other seeds and M1+g1 aggregate at 0.890 vs ~0.993. Fix: `OneHotEncoder(handle_unknown="ignore")` or stratify the split on the offending categorical. Effort: <1 day.
+2. **CCFD robust PR-AUC variance** (cross-dataset Open flag #3). Robust PR-AUC swings 0.58 ± 0.23 across 3 seeds — likely model-init variance with 0.17% positive class and 20 epochs. Either run more seeds or note in the paper.
+
 ---
 
 ## 6. Key Caveats and Reviewer Defences
 
-### Caveat 1: PR-AUC insensitivity to mask variants
+### Caveat 1: PR-AUC insensitivity across six experimental axes
 
-All eight mask variants (M0–M6) show robust PR-AUC ≈ 0.1051. This means capability constraints improve robust accuracy but not the precision-recall trade-off. **Must report both metrics.** The paper framing should be: "Capability constraints change *which* samples are successfully attacked, but do not change the overall rank-ordering of fraudulent vs legitimate samples under attack."
+Robust PR-AUC on LCLD is locked at 0.1051 ± 0.0001 across:
+- 8 mask-ablation variants (M0–M6, `mask_ablation_findings.md`)
+- 3 seeds in the cross-dataset audit (`cross_dataset_feasibility_findings.md`)
+- 3 attack regimes in the g1-projection study — unconstrained, g1-projected, M1+g1 (`g1_projection_findings.md`, σ ≤ 9×10⁻⁶)
 
-### Caveat 2: Single-dataset Tier C
+This is six independent axes where PR-AUC is unmoved at LCLD ε=0.1. **Must report both PR-AUC and robust accuracy** — robust accuracy moves 0.038 → 0.042 → 0.175 across the three g1-projection regimes, so it discriminates; PR-AUC does not. The paper framing should be: "Capability and constraint regimes change *which* samples are successfully attacked, but at LCLD ε=0.1 the rank ordering of fraudulent vs legitimate samples under attack is invariant. PR-AUC alone cannot distinguish constraint-aware from constraint-unaware attacks here." This deserves its own paper subsection rather than a footnote.
 
-Only LCLD currently supports formula-aware evaluation. This is not a weakness if framed correctly: "LCLD serves as the high-constraint showcase; other datasets demonstrate that the same tiered framework gracefully degrades when domain knowledge is limited." TabularBench's own datasets have heterogeneous constraint richness.
+### Caveat 2: Single-dataset Tier C — formula-aware result confined to LCLD
+
+Only LCLD has a verified nonlinear formula constraint (g1). The headline 0.05% → 50.2% → 95.3% filtered-success progression is therefore a single-dataset result. Mitigation: (a) the §1 result #2 binary dichotomy already establishes that *any* domain structure (not just formulas) suffices to make constraint-aware attacks recover hidden attack surface; (b) Phase 2 cross-dataset M+structure-projection runs on IEEE-CIS / Sparkov would directly test generalization (see §5 Phase 2). Until those land, the paper should frame the M1+g1 result as "demonstrated on LCLD; expected to hold on any dataset where post-hoc filtering rejects most adv examples — testable extension."
 
 ### Caveat 3: Sparkov constraint circularity risk
 
@@ -269,14 +297,14 @@ The three-tier framework maps cleanly to paper sections:
 
 | Paper Section | Content | Primary Evidence |
 |--------------|---------|-----------------|
-| §1 Introduction | Motivation: unconstrained attacks overstate vulnerability on financial data | +55pp ADV/ADV+CTR gap |
+| §1 Introduction | Motivation: unconstrained attacks overstate vulnerability on financial data — *but post-hoc filtering also underestimates real attacker success.* | +55pp ADV/ADV+CTR gap reframed via 0.05/50.2/95.3% filtered-success progression (`g1_projection_findings.md`) |
 | §2 Related Work | TabularBench (NeurIPS 2024), Amazon FDB, ART | Complementary positioning |
-| §3 FraudBench Framework | Tier A/B/C definition; constraint richness gradient table; ConstraintSchema design | This document |
-| §4 Datasets & Experimental Setup | Per-dataset constraint inventory (Section 3 of this doc); models; attacks; defences | Dataset cards + constraint tables |
+| §3 FraudBench Framework | Tier A/B/C definition (with empirical caveat — see §4 below); ConstraintSchema design; constraint-aware vs post-hoc dichotomy | This doc §1, §4 |
+| §4 Datasets & Experimental Setup | Per-dataset constraint inventory (§3 of this doc); models; attacks; defences | Dataset cards + constraint tables |
 | §5 Results — Metric Analysis | Accuracy vs PR-AUC/MCC; degenerate model identification; ranking sensitivity | τ < 0.74, 10/70 degenerate models |
-| §5 Results — Constraint Analysis | Cross-dataset feasibility gradient; LCLD deep-dive (g1 dominance); mask ablation attacker spectrum | 0.1% feasibility; M0→M6 +29.8pp |
+| §5 Results — Constraint Analysis | **Headline:** g1+M1 progression on LCLD (0.05/50.2/95.3% filtered success); empirical constrained-vs-unconstrained dichotomy across 4 datasets; mask ablation attacker spectrum; PR-AUC invariance across 6 axes | `g1_projection_findings.md`, `cross_dataset_feasibility_findings.md`, `mask_ablation_findings.md` |
 | §5 Results — Defence Analysis | AT vs input validation vs ensemble; AT as most reliable; input validation negative finding | Existing 182-run registry |
-| §6 Discussion | Constraint-richness-determines-methodology argument; complementarity with TabularBench | Gradient table |
+| §6 Discussion | Constraint-aware-attacks-recover-hidden-attack-surface argument; complementarity with TabularBench; methodology is dataset-dependent | Headline progression + binary dichotomy table |
 | §7 Conclusion | FraudBench fills the intersection of adversarial robustness + fraud-specific evaluation | Synthesis |
 
 ---
@@ -290,3 +318,6 @@ The three-tier framework maps cleanly to paper sections:
 | Penalty-based projection (Path A) over MOEVA integration (Path B) for Tier C | Path A is implementable within ICAIF timeline; Path B requires significant engineering. Path A suffices to demonstrate the constrained-vs-unconstrained gap. | 2026-04-15 |
 | Report robust PR-AUC insensitivity as finding, not suppress it | Transparent reporting strengthens credibility. PR-AUC insensitivity is itself an interesting result: it distinguishes capability constraints (which help accuracy) from domain constraints (which affect the PR trade-off). | 2026-04-15 |
 | Sparkov geo-consistency via external ZIP database | Avoids circularity critique (constraint derived from external source, not from synthetic data itself). | 2026-04-15 |
+| Collapse 4-tier richness gradient to binary "constrained vs unconstrained" | Phase 1 cross-dataset audit refuted the a-priori ordering (IEEE-CIS most restrictive, not LCLD). Empirical data clusters <1% vs 100% — a binary dichotomy is the empirically supported claim. | 2026-04-22 |
+| Headline finding = constraint-aware attack vs post-hoc filtering equivalence (not the ADV/ADV+CTR gap) | Phase 3 + M1+g1 follow-up shows post-hoc filtering rejects 99.95% of attacks but constraint-aware generation produces ~2774× more useful attacks. The gap measured attack-generation inefficiency, not defender safety. | 2026-04-22 |
+| M1+g1 retrains the model per seed (different init from Cell 10) — accept as caveat rather than refactor | Filtered-success rate is a within-row ratio so the headline result is unaffected. Refactoring to share models is engineering effort with no scientific gain. | 2026-04-22 |
