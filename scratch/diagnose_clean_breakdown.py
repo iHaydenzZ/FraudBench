@@ -13,6 +13,7 @@ for the bottleneck constraint.
 Run on Colab:
     python scratch/diagnose_clean_breakdown.py
 """
+
 import re
 
 import numpy as np
@@ -42,8 +43,7 @@ def inverse_transform_numeric(X_proc, num_feature_names, scaler):
     sanitize = lambda c: re.sub(r"[\[\]<>]", "_", c)
     sanitized_num = [sanitize(c) for c in num_feature_names]
     proc_cols = X_proc.columns.tolist()
-    matched = [(raw, san) for raw, san in zip(num_feature_names, sanitized_num)
-               if san in proc_cols]
+    matched = [(raw, san) for raw, san in zip(num_feature_names, sanitized_num) if san in proc_cols]
     raw_names = [m[0] for m in matched]
     san_names = [m[1] for m in matched]
     idx_in_scaler = [num_feature_names.index(r) for r in raw_names]
@@ -59,8 +59,7 @@ def reconstruct_term_from_ohe(X_proc):
         return None
     term_vals = {}
     for col in term_cols:
-        v = pd.to_numeric(col.replace("term_", "").replace("months", "").strip(),
-                          errors="coerce")
+        v = pd.to_numeric(col.replace("term_", "").replace("months", "").strip(), errors="coerce")
         if not np.isnan(v):
             term_vals[col] = v
     if not term_vals:
@@ -112,9 +111,9 @@ def lcld_feasibility_with_masks(X_raw, X_proc):
     g4 = check_g4_term_ohe(X_proc)
     per = {
         "g1_installment": _pass(g1),
-        "g2_open_total":  _pass(g2),
-        "g3_bankruptcy":  _pass(g3),
-        "g4_term_ohe":    _pass(g4),
+        "g2_open_total": _pass(g2),
+        "g3_bankruptcy": _pass(g3),
+        "g4_term_ohe": _pass(g4),
     }
 
     def _b(s):
@@ -137,7 +136,7 @@ def diagnose(seed: int):
     X_test_raw = inverse_transform_numeric(X_test_p, num_names, scaler)
 
     per, agg, masks, X_raw_with_term = lcld_feasibility_with_masks(X_test_raw, X_test_p)
-    print(f"  per-constraint pass rates:")
+    print("  per-constraint pass rates:")
     for k, v in per.items():
         print(f"    {k:<22} {v:.4f}")
     print(f"  aggregate (g1 & g2 & g3 & g4): {agg:.4f}")
@@ -163,33 +162,39 @@ def diagnose(seed: int):
 
             if constraint_id == "g3":
                 # raw vs post-inverse pub_rec, pub_rec_bankruptcies
-                sample = pd.DataFrame({
-                    "raw_pubrec":      _to_float(X_test["pub_rec"]).loc[viol_idx].values,
-                    "raw_bank":        _to_float(X_test["pub_rec_bankruptcies"]).loc[viol_idx].values,
-                    "inv_pubrec":      X_test_raw["pub_rec"].loc[viol_idx].values,
-                    "inv_bank":        X_test_raw["pub_rec_bankruptcies"].loc[viol_idx].values,
-                })
+                sample = pd.DataFrame(
+                    {
+                        "raw_pubrec": _to_float(X_test["pub_rec"]).loc[viol_idx].values,
+                        "raw_bank": _to_float(X_test["pub_rec_bankruptcies"]).loc[viol_idx].values,
+                        "inv_pubrec": X_test_raw["pub_rec"].loc[viol_idx].values,
+                        "inv_bank": X_test_raw["pub_rec_bankruptcies"].loc[viol_idx].values,
+                    }
+                )
                 sample["diff_bank_minus_pubrec_inv"] = sample["inv_bank"] - sample["inv_pubrec"]
                 print(sample.to_string())
             elif constraint_id == "g2":
-                sample = pd.DataFrame({
-                    "raw_open":   _to_float(X_test["open_acc"]).loc[viol_idx].values,
-                    "raw_total":  _to_float(X_test["total_acc"]).loc[viol_idx].values,
-                    "inv_open":   X_test_raw["open_acc"].loc[viol_idx].values,
-                    "inv_total":  X_test_raw["total_acc"].loc[viol_idx].values,
-                })
+                sample = pd.DataFrame(
+                    {
+                        "raw_open": _to_float(X_test["open_acc"]).loc[viol_idx].values,
+                        "raw_total": _to_float(X_test["total_acc"]).loc[viol_idx].values,
+                        "inv_open": X_test_raw["open_acc"].loc[viol_idx].values,
+                        "inv_total": X_test_raw["total_acc"].loc[viol_idx].values,
+                    }
+                )
                 print(sample.to_string())
             elif constraint_id == "g1":
-                sample = pd.DataFrame({
-                    "raw_loan":   _to_float(X_test["loan_amnt"]).loc[viol_idx].values,
-                    "raw_rate":   _to_float(X_test["int_rate"]).loc[viol_idx].values,
-                    "raw_term":   _to_float(X_test["term"]).loc[viol_idx].values,
-                    "raw_inst":   _to_float(X_test["installment"]).loc[viol_idx].values,
-                    "inv_loan":   X_test_raw["loan_amnt"].loc[viol_idx].values,
-                    "inv_rate":   X_test_raw["int_rate"].loc[viol_idx].values,
-                    "term_recon": X_raw_with_term["term"].loc[viol_idx].values,
-                    "inv_inst":   X_test_raw["installment"].loc[viol_idx].values,
-                })
+                sample = pd.DataFrame(
+                    {
+                        "raw_loan": _to_float(X_test["loan_amnt"]).loc[viol_idx].values,
+                        "raw_rate": _to_float(X_test["int_rate"]).loc[viol_idx].values,
+                        "raw_term": _to_float(X_test["term"]).loc[viol_idx].values,
+                        "raw_inst": _to_float(X_test["installment"]).loc[viol_idx].values,
+                        "inv_loan": X_test_raw["loan_amnt"].loc[viol_idx].values,
+                        "inv_rate": X_test_raw["int_rate"].loc[viol_idx].values,
+                        "term_recon": X_raw_with_term["term"].loc[viol_idx].values,
+                        "inv_inst": X_test_raw["installment"].loc[viol_idx].values,
+                    }
+                )
                 print(sample.to_string())
             elif constraint_id == "g4":
                 term_cols = [c for c in X_test_p.columns if c.startswith("term_")]

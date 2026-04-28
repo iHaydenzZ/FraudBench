@@ -16,7 +16,7 @@ and the fix is a 1-character notebook change: `tol=1e-6` in check_g3.
 
 Run on Colab: python scratch/diagnose_g3_pipeline.py
 """
-import numpy as np
+
 import pandas as pd
 
 from datasets.loader import load_dataset
@@ -63,8 +63,7 @@ def diagnose_g3_pipeline(seeds: list):
     print(f"=== LCLD g3 pass rate under 3 pipeline variants (sample_frac={sample_frac}) ===")
     print(f"{'=' * 90}")
     print(
-        f"{'seed':<6}{'V1_raw':<14}{'V2_round_trip':<18}"
-        f"{'V3_round_trip+tol':<22}{'V2-V1 delta':<14}{'V3-V1 delta':<14}"
+        f"{'seed':<6}{'V1_raw':<14}{'V2_round_trip':<18}{'V3_round_trip+tol':<22}{'V2-V1 delta':<14}{'V3-V1 delta':<14}"
     )
 
     drift_examples = None
@@ -80,20 +79,19 @@ def diagnose_g3_pipeline(seeds: list):
         try:
             X_round_trip = round_trip(pp, X_test)
             # Need pub_rec and pub_rec_bankruptcies columns
-            v2_df = pd.DataFrame({
-                "pub_rec": X_round_trip["pub_rec"],
-                "pub_rec_bankruptcies": X_round_trip["pub_rec_bankruptcies"],
-            })
+            v2_df = pd.DataFrame(
+                {
+                    "pub_rec": X_round_trip["pub_rec"],
+                    "pub_rec_bankruptcies": X_round_trip["pub_rec_bankruptcies"],
+                }
+            )
             v2 = check_g3_strict(v2_df).mean()
             v3 = check_g3_tolerant(v2_df, tol=1e-6).mean()
         except KeyError as e:
             print(f"  seed={seed}: round_trip failed — column missing: {e}")
             continue
 
-        print(
-            f"{seed:<6}{v1:<14.6f}{v2:<18.6f}"
-            f"{v3:<22.6f}{v2 - v1:<+14.6f}{v3 - v1:<+14.6f}"
-        )
+        print(f"{seed:<6}{v1:<14.6f}{v2:<18.6f}{v3:<22.6f}{v2 - v1:<+14.6f}{v3 - v1:<+14.6f}")
 
         # Capture seed-42 drift examples for inspection
         if seed == 42 and drift_examples is None:
@@ -101,16 +99,18 @@ def diagnose_g3_pipeline(seeds: list):
             v2_mask = check_g3_strict(v2_df)
             # Rows that pass V1 but fail V2 — these are the drift-induced violations
             drifted = v1_mask & ~v2_mask
-            drift_examples = pd.DataFrame({
-                "pub_rec_raw": X_test["pub_rec"].astype(float),
-                "pub_rec_bankrupt_raw": X_test["pub_rec_bankruptcies"].astype(float),
-                "pub_rec_round_trip": v2_df["pub_rec"],
-                "pub_rec_bankrupt_round_trip": v2_df["pub_rec_bankruptcies"],
-                "drifted": drifted,
-            })
+            drift_examples = pd.DataFrame(
+                {
+                    "pub_rec_raw": X_test["pub_rec"].astype(float),
+                    "pub_rec_bankrupt_raw": X_test["pub_rec_bankruptcies"].astype(float),
+                    "pub_rec_round_trip": v2_df["pub_rec"],
+                    "pub_rec_bankrupt_round_trip": v2_df["pub_rec_bankruptcies"],
+                    "drifted": drifted,
+                }
+            )
 
     if drift_examples is not None:
-        print(f"\n--- Seed-42 inverse-transform drift inspection ---")
+        print("\n--- Seed-42 inverse-transform drift inspection ---")
         n_drifted = int(drift_examples["drifted"].sum())
         print(f"Rows that pass V1 (raw) but fail V2 (round-trip): {n_drifted}")
         if n_drifted > 0:
@@ -121,11 +121,15 @@ def diagnose_g3_pipeline(seeds: list):
             # Show drift magnitude
             diff_bankrupt = sample["pub_rec_bankrupt_round_trip"] - sample["pub_rec_bankrupt_raw"]
             diff_pubrec = sample["pub_rec_round_trip"] - sample["pub_rec_raw"]
-            print(f"\nDrift magnitude on these 8 rows:")
-            print(f"  pub_rec_bankruptcies: min={diff_bankrupt.min():.2e}, "
-                  f"max={diff_bankrupt.max():.2e}, mean={diff_bankrupt.mean():.2e}")
-            print(f"  pub_rec:              min={diff_pubrec.min():.2e}, "
-                  f"max={diff_pubrec.max():.2e}, mean={diff_pubrec.mean():.2e}")
+            print("\nDrift magnitude on these 8 rows:")
+            print(
+                f"  pub_rec_bankruptcies: min={diff_bankrupt.min():.2e}, "
+                f"max={diff_bankrupt.max():.2e}, mean={diff_bankrupt.mean():.2e}"
+            )
+            print(
+                f"  pub_rec:              min={diff_pubrec.min():.2e}, "
+                f"max={diff_pubrec.max():.2e}, mean={diff_pubrec.mean():.2e}"
+            )
 
 
 def diagnose_value_distribution(seed: int):
@@ -137,12 +141,12 @@ def diagnose_value_distribution(seed: int):
 
     print(f"\n--- Distribution of (pub_rec, pub_rec_bankruptcies) on seed={seed} test set ---")
     print(f"Total test rows: {len(X_test)}")
-    print(f"  pub_rec == 0:                    {int((pubrec == 0).sum())} "
-          f"({(pubrec == 0).mean() * 100:.1f}%)")
-    print(f"  pub_rec_bankruptcies == 0:       {int((bankrupt == 0).sum())} "
-          f"({(bankrupt == 0).mean() * 100:.1f}%)")
-    print(f"  both == 0:                       {int(((pubrec == 0) & (bankrupt == 0)).sum())} "
-          f"({((pubrec == 0) & (bankrupt == 0)).mean() * 100:.1f}%)")
+    print(f"  pub_rec == 0:                    {int((pubrec == 0).sum())} ({(pubrec == 0).mean() * 100:.1f}%)")
+    print(f"  pub_rec_bankruptcies == 0:       {int((bankrupt == 0).sum())} ({(bankrupt == 0).mean() * 100:.1f}%)")
+    print(
+        f"  both == 0:                       {int(((pubrec == 0) & (bankrupt == 0)).sum())} "
+        f"({((pubrec == 0) & (bankrupt == 0)).mean() * 100:.1f}%)"
+    )
     print(f"  pub_rec_bankruptcies is NaN:     {int(bankrupt.isna().sum())}")
 
 

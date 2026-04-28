@@ -10,6 +10,7 @@ Expected runtime: ~30 seconds (CPU is fine, no GPU needed).
 
 Paste the full output back to Claude to make the Phase B path decision.
 """
+
 from datasets.loader import load_dataset
 from datasets.splitter import split_dataset
 from preprocessing.processor import DataPreprocessor
@@ -56,7 +57,9 @@ def diagnose_test_only_categories(name: str, sample_frac: float, seeds: list[int
             test_cats = set(X_test[cat_col].dropna().unique())
             test_only = test_cats - train_cats
             if test_only:
-                print(f"seed={seed}, col={cat_col}: test-only={sorted(test_only)[:10]}{'...' if len(test_only) > 10 else ''}")
+                print(
+                    f"seed={seed}, col={cat_col}: test-only={sorted(test_only)[:10]}{'...' if len(test_only) > 10 else ''}"
+                )
                 for cat in sorted(test_only):
                     n_test = int((X_test[cat_col] == cat).sum())
                     print(f"    '{cat}': {n_test} rows in test, 0 in train")
@@ -71,8 +74,10 @@ def diagnose_train_frequency(name: str, sample_frac: float, seed: int, cols: lis
         if cat_col not in X_train.columns:
             continue
         counts = X_train[cat_col].value_counts()
-        print(f"\n{cat_col}: total unique={len(counts)}, min_count={counts.min()}, "
-              f"<10={int((counts < 10).sum())}, <5={int((counts < 5).sum())}, <3={int((counts < 3).sum())}")
+        print(
+            f"\n{cat_col}: total unique={len(counts)}, min_count={counts.min()}, "
+            f"<10={int((counts < 10).sum())}, <5={int((counts < 5).sum())}, <3={int((counts < 3).sum())}"
+        )
         print("  bottom 10:")
         for cat, n in counts.tail(10).items():
             print(f"    {cat}: {n}")
@@ -93,7 +98,9 @@ def main():
         # Step A1.3: how rare are categories in train (drives min_frequency choice)
         diagnose_train_frequency("lcld", sample_frac=0.1, seed=42, cols=offenders)
     else:
-        print("\n*** No LCLD offenders found — Phase A hypothesis is wrong. Check OHE-validity check semantics instead (Path B-γ). ***")
+        print(
+            "\n*** No LCLD offenders found — Phase A hypothesis is wrong. Check OHE-validity check semantics instead (Path B-γ). ***"
+        )
 
     # Step A2.1: IEEE-CIS regression check on the 3 binding OHE blocks
     diagnose_dataset(

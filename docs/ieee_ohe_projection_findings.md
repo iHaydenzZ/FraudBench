@@ -118,7 +118,7 @@ PR-AUC distinguishes attack from no-attack (clean ~0.45 → robust ~0.07 on IEEE
 
 Phase 2 cross-dataset MVP is complete and the result is decisive. The headline finding from Phase 3 (`g1_projection_findings.md`) is no longer single-dataset.
 
-**Immediate next step:** Add an M+OHE follow-up to this notebook — an analog of the LCLD M1+g1 cells. M would freeze D1–D15 (and likely C1–C14, V1–V339, card1–6 — the IEEE-CIS immutable set per `constraint_evaluation_guidance.md` §3.3). Expected outcome: agg feas 0.535 → ~1.0, filtered success 59.7% → ~95%+, flipped count preserved within model-init noise. This produces the paper's cleanest direct cross-dataset comparison: LCLD M1+g1 = 95.3% FSR vs IEEE-CIS M+OHE = ~95% FSR.
+**Immediate next step:** Add an M+OHE follow-up to this notebook — an analog of the LCLD M1+g1 cells. M would freeze D1–D15 (and likely C1–C14, V1–V339, card1–6 — the IEEE-CIS immutable set per `constraint_evaluation_guidance.md` §3.3). Expected outcome: agg feas 0.535 → ~1.0, filtered success 59.7% → ~95-100%, flipped count preserved within model-init noise. This produces the paper's cleanest direct cross-dataset comparison: LCLD M1+g1 = **100% FSR** (post-EVAL_TOL fix, commit `326483d`) vs IEEE-CIS M+OHE = ~95-100% FSR. Note: IEEE-CIS constraints are mostly OHE-validity checks (not integer-count inequalities), so the float-round-trip drift bug that depressed LCLD numbers does *not* apply here — this notebook's 59.7% figure is correct as-is.
 
 **After that:** Same exercise on Sparkov (3-OHE projection, 0.0002+0.017+0.265 binding constraints). Lower priority since two datasets already establishes the cross-dataset pattern; a third is paper-table polish, not a logical necessity.
 

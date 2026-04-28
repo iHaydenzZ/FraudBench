@@ -19,12 +19,13 @@ Build on `notebooks/ieee_cis_ohe_projection_attack.ipynb`. Add an M-mask layer t
 
 - **Mask:** mutable = `TransactionAmt`, `ProductCD` OHE, `addr1/2`, `dist1/2` (per `constraint_evaluation_guidance.md` §3.3); freeze D1–D15, C1–C14, V1–V339, card1–6
 - **Expected outcome:** agg feasibility 0.535 → ~1.0; FSR 59.7% → ~95%; flipped-count preserved within model-init noise
-- **Why it matters:** Produces the paper's cleanest cross-dataset comparison row (LCLD M1+g1 = 95.3% vs IEEE-CIS M+OHE ≈ 95%); closes the residual D-non-negativity gap noted in `ieee_ohe_projection_findings.md`
+- **Why it matters:** Produces the paper's cleanest cross-dataset comparison row (LCLD M1+g1 = **100%** vs IEEE-CIS M+OHE ≈ 95-100%); closes the residual D-non-negativity gap noted in `ieee_ohe_projection_findings.md`
 - **Effort:** ~3 cells (mask definition, M+OHE attack loop, results table)
 
 ### B. Soft blockers (`constraint_evaluation_guidance.md` §5)
 
-- [ ] LCLD seed-42 sparse-categorical fix (`OneHotEncoder(handle_unknown="ignore")` or stratify split). <1 day.
+- [x] ~~LCLD seed-42 sparse-categorical fix~~ — **resolved 2026-04-28** (commit `326483d`). Root cause was float64 round-trip drift on integer-valued g3 columns, not a sparse-categorical artifact. Fix: `EVAL_TOL = 1e-6` in `check_g2` / `check_g3`. New M1+g1 filtered success: **100%** (was 95.3%). See `g1_projection_findings.md` §"Methodology fix".
+- [ ] **Propagate EVAL_TOL fix to 4 other LCLD-touching notebooks** (`mask_ablation`, `cross_dataset_feasibility`, `tabularbench_comparison`, `tabularbench_metric_analysis`) — same 1-line edit per notebook + re-run feasibility cells (no model retraining). Refresh their findings docs with corrected numbers. ~1h total.
 - [ ] CCFD robust PR-AUC variance: more seeds or longer training; otherwise note in paper.
 
 ### C. Lower priority -- Sparkov OHE-projection

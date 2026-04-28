@@ -26,6 +26,7 @@ Interpretation key (printed at end):
   - processed = 0 but raw drift > 1e-10    → float32 dtype downcast on .values assign
   - both = 0 and g3_adv ≈ g3_test          → M1 not the cause; investigate elsewhere
 """
+
 import os
 
 import numpy as np
@@ -128,7 +129,7 @@ def diagnose_seed(seed: int):
         g3_adv_strict = (b_a <= p_a).mean()
         g3_test_strict = (b_t <= p_t).mean()
         g3_adv_tol = (b_a <= p_a + 1e-6).mean()
-        print(f"\n  g3 (full test set, raw):")
+        print("\n  g3 (full test set, raw):")
         print(f"    on X_test_p inverse:                 {g3_test_strict:.4f}  (~Phase A.3 V2)")
         print(f"    on X_adv_p inverse (strict):         {g3_adv_strict:.4f}  (notebook number)")
         print(f"    on X_adv_p inverse (tol=1e-6):       {g3_adv_tol:.4f}")
@@ -138,14 +139,16 @@ def diagnose_seed(seed: int):
         print(f"\n  Rows where M1-frozen but g3 still flipped pass→fail: {n_flip}")
         if n_flip > 0:
             idx = np.where(flipped)[0][:8]
-            sample = pd.DataFrame({
-                "pub_rec_test": p_t[idx],
-                "pub_rec_adv":  p_a[idx],
-                "bank_test":    b_t[idx],
-                "bank_adv":     b_a[idx],
-                "diff_pubrec":  p_a[idx] - p_t[idx],
-                "diff_bank":    b_a[idx] - b_t[idx],
-            })
+            sample = pd.DataFrame(
+                {
+                    "pub_rec_test": p_t[idx],
+                    "pub_rec_adv": p_a[idx],
+                    "bank_test": b_t[idx],
+                    "bank_adv": b_a[idx],
+                    "diff_pubrec": p_a[idx] - p_t[idx],
+                    "diff_bank": b_a[idx] - b_t[idx],
+                }
+            )
             print("\n  First 8 flipped rows (raw values, post-inverse):")
             print(sample.to_string())
 

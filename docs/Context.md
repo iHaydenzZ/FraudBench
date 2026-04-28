@@ -259,14 +259,15 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | 2026-04-15 | Mask ablation M0–M6 on LCLD: monotone robust accuracy gradient (0.042 → 0.340), PR-AUC locked at 0.1051 across all 8 variants | `mask_ablation.ipynb` | `mask_ablation_findings.md` |
 | ~2026-04-15 | TabularBench metric audit: accuracy vs F1/MCC ranking divergence (Kendall τ < 0.74); 10/70 degenerate TabNet models | `tabularbench_comparison.ipynb`, `tabularbench_metric_analysis.ipynb` | `tabularbench_comparison_findings.md` |
 | 2026-04-22 | Cross-dataset Phase 1 feasibility audit: refuted a-priori richness gradient; binary "constrained vs unconstrained" dichotomy; OHE-validity is universal binding constraint | `cross_dataset_feasibility.ipynb` | `cross_dataset_feasibility_findings.md` |
-| 2026-04-22 | LCLD g1-projection + M1+g1: filtered success 0.05% → 50.2% → 95.3% with flip-count delta ≤2 (same-model); M1+g1 retrains per seed (between-model caveat) | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
+| 2026-04-22 | LCLD g1-projection + M1+g1 (initial): reported 0.05% → 50.2% → 95.3% — superseded by 2026-04-28 fix below | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
+| 2026-04-28 | LCLD g1+M1 corrected (EVAL_TOL fix, commit `326483d`): filtered success **0.11% → 76.5% → 100.0%** with flip-count delta ≤1 (same-model). Soft blocker resolved — root cause was float64 round-trip drift on integer-valued g3 columns, not a sparse-categorical artifact. | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
 | 2026-04-22 | IEEE-CIS OHE-projection MVP (Phase 2 cross-dataset replication): filtered success 0.00% → 59.7% with flip-count delta ≤5 (same-model); residual gap is `i_d_nonneg` | `ieee_cis_ohe_projection_attack.ipynb` | `ieee_ohe_projection_findings.md` |
 
 ### Headline numbers (paper §5)
 
 | Dataset | Stock CAPGD FSR | Constraint-aware FSR | Stock adv feasibility | Binding constraint after projection |
 |---|---:|---:|---:|---|
-| **LCLD** | 0.05% | **95.3%** (M1+g1) | 0.093% | g3 (closed by M1) |
+| **LCLD** | 0.11% | **100.0%** (M1+g1) | 0.12% | g3 (closed by M1, after EVAL_TOL fix) |
 | **IEEE-CIS** | 0.00% | **59.7%** (OHE-only; M+OHE pending → ~95% expected) | 0.014% | i_d_nonneg (closeable by M-mask) |
 | **Sparkov** | — (not yet attacked) | — | 0.38% | s_state / s_category / s_gender OHE |
 | **CCFD** | — (no constraint to filter) | — | 100% | None (PCA-anonymised) |
@@ -282,8 +283,10 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 
 ### Outstanding soft blockers
 
-1. **LCLD seed-42 sparse-categorical issue** (`addr_state` / `purpose` test-only value caps clean-feasibility at 0.888 vs ~0.991 on other seeds, M1+g1 aggregate at 0.890 vs ~0.993). Fix: `OneHotEncoder(handle_unknown="ignore")` or stratify split. <1 day.
-2. **CCFD robust PR-AUC variance** (0.58 ± 0.23 across 3 seeds). Fix: more seeds or longer training; otherwise note in paper.
+1. **CCFD robust PR-AUC variance** (0.58 ± 0.23 across 3 seeds). Fix: more seeds or longer training; otherwise note in paper.
+2. **EVAL_TOL fix not yet propagated to other LCLD-touching notebooks.** `mask_ablation`, `cross_dataset_feasibility`, `tabularbench_comparison`, `tabularbench_metric_analysis` define their own `check_g2`/`check_g3` inline and likely show the same ~10pp seed-42 depression. Pure evaluation fix; no model retraining needed. ~10 min compute + ~5 min editing per notebook. See `g1_projection_findings.md` §"Methodology fix" for the mechanism.
+
+> **Resolved 2026-04-28:** the previously-listed "LCLD seed-42 sparse-categorical issue" was misdiagnosed; root cause was float64 round-trip drift on integer-valued constraint columns, fixed by `EVAL_TOL = 1e-6` in `notebooks/g1_projection_attack.ipynb` (commit `326483d`).
 
 ### Cross-references
 
