@@ -284,7 +284,7 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 ### Outstanding soft blockers
 
 1. **CCFD robust PR-AUC variance** (0.58 ± 0.23 across 3 seeds). Fix: more seeds or longer training; otherwise note in paper.
-2. **EVAL_TOL fix not yet propagated to other LCLD-touching notebooks.** `mask_ablation`, `cross_dataset_feasibility`, `tabularbench_comparison`, `tabularbench_metric_analysis` define their own `check_g2`/`check_g3` inline and likely show the same ~10pp seed-42 depression. Pure evaluation fix; no model retraining needed. ~10 min compute + ~5 min editing per notebook. See `g1_projection_findings.md` §"Methodology fix" for the mechanism.
+2. **EVAL_TOL fix — scope narrowed by audit (2026-04-29).** The original ToDo entry assumed all four LCLD-touching notebooks (`mask_ablation`, `cross_dataset_feasibility`, `tabularbench_comparison`, `tabularbench_metric_analysis`) needed the same fix. Audit before patching showed three already use `TOLERANCE = 0.01` on g2/g3 (inherited from TabularBench's `EqualConstraint`), absorbing the ~1e-16 ULP drift ~10¹³× over — so they were never affected and need no change. Only `cross_dataset_feasibility.ipynb` used strict `<=` and required the fix; applied 2026-04-29. Awaits Colab re-run to verify per-seed clean g3 pass reaches ~1.0 across all 3 seeds (pre-fix 3-seed avg = 0.9617). Why the two conventions coexist is documented in `constraint_evaluation_guidance.md` §9.
 
 > **Resolved 2026-04-28:** the previously-listed "LCLD seed-42 sparse-categorical issue" was misdiagnosed; root cause was float64 round-trip drift on integer-valued constraint columns, fixed by `EVAL_TOL = 1e-6` in `notebooks/g1_projection_attack.ipynb` (commit `326483d`).
 

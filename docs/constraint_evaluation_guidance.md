@@ -331,3 +331,33 @@ The three-tier framework maps cleanly to paper sections:
 | Replace "C/D non-negativity / geo-bbox dominate" with "OHE-validity is the universal binding constraint" | Per-constraint decomposition (cross-dataset Cell 14, 2026-04-22) showed C-nonneg passes 1.000 on IEEE-CIS and merch-bbox passes 0.992 on Sparkov; the actual binding constraints are OHE-validity checks on every constrained dataset. The "many cheap checks ANDed" framing still holds — the *type* of cheap check is OHE, not non-negativity. | 2026-04-22 |
 | Phase 2 = OHE-projection MVP first, M+OHE follow-up second | The Phase 1 audit established OHE-validity as the universal binding constraint, making OHE-projection the minimum-viable cross-dataset replication step. Splitting Phase 2 into "OHE-projection only" (low effort, ~2 cells) and "M+OHE follow-up" (higher effort, mask design per dataset) lets us bank the cross-dataset claim early before committing to the more expensive mask work. | 2026-04-22 |
 | IEEE-CIS chosen as second dataset (over Sparkov) | IEEE-CIS has the most restrictive stock-CAPGD adv feasibility (0.014%) of the constrained datasets, so it is the most stringent test of whether constraint-aware projection can recover attack power. Sparkov (0.38%) is a weaker test; CCFD (100%) cannot demonstrate the pattern at all. | 2026-04-22 |
+
+---
+
+## 9. Tolerance Conventions for Inequality Constraint Checks
+
+FraudBench has two equivalent tolerance conventions for inequality
+constraint checks on round-tripped numeric columns:
+
+- `TOLERANCE = 0.01` (`mask_ablation`, `tabularbench_*`): inherited from
+  TabularBench's `EqualConstraint` convention. Generous margin suitable
+  for both float64 round-trip drift and minor numerical noise.
+- `EVAL_TOL = 1e-6` (`g1_projection_attack`, `cross_dataset_feasibility`):
+  tighter margin chosen to be unambiguously safe against ULP drift
+  (~1e-16) while staying 6 orders of magnitude below the smallest
+  real violation (1.0 for integer-valued count columns).
+
+Both are mathematically equivalent for our datasets — neither can mask a
+true constraint break given that the affected columns (`pub_rec`,
+`pub_rec_bankruptcies`, `open_acc`, `total_acc`) are integer counts. The
+inconsistency is historical: the `TOLERANCE = 0.01` convention pre-dates
+the EVAL_TOL convention, and the newer notebooks (`g1_projection_attack`,
+`cross_dataset_feasibility`) were written from a clean-room re-implementation
+mindset rather than copying the older TabularBench-derived convention.
+Future notebooks should adopt `EVAL_TOL = 1e-6` for convention.
+
+**Why this matters in review**: a reviewer comparing two notebooks may
+flag the different constants as a methodological inconsistency. The above
+is the reproducible reason — both produce identical results on these
+datasets, and the choice is bounded above by the semantics of the
+constraint columns (integer counts, smallest real violation = 1.0).
