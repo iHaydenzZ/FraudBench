@@ -36,10 +36,24 @@ from datasets.splitter import split_dataset
 from preprocessing.processor import DataPreprocessor
 
 
-OUT_DIR = "results/adv_examples/g1_projection"
+# Notebook writes locally then backs up to Drive. After a fresh clone the
+# local dir is empty, so fall back to the Drive backup location.
+OUT_DIR_CANDIDATES = [
+    "results/adv_examples/g1_projection",
+    "/content/drive/MyDrive/FraudBench/results/adv_examples/g1_projection",
+]
 SEEDS = [42, 123, 456]
 SAMPLE_FRAC = 0.1
 TARGET_COLS = ["pub_rec", "pub_rec_bankruptcies"]
+
+
+def find_parquet(seed: int) -> str | None:
+    fname = f"lcld_neural_m1_g1proj_seed{seed}.parquet"
+    for d in OUT_DIR_CANDIDATES:
+        p = os.path.join(d, fname)
+        if os.path.exists(p):
+            return p
+    return None
 
 
 def get_scaler_and_num_names(pp):
@@ -59,10 +73,14 @@ def diagnose_seed(seed: int):
     print(f"=== seed={seed} M1 mask leak inspection ===")
     print(f"{'=' * 90}")
 
-    parq = os.path.join(OUT_DIR, f"lcld_neural_m1_g1proj_seed{seed}.parquet")
-    if not os.path.exists(parq):
-        print(f"  MISSING parquet: {parq} — skip seed")
+    parq = find_parquet(seed)
+    if parq is None:
+        print(f"  MISSING parquet for seed={seed} in any of:")
+        for d in OUT_DIR_CANDIDATES:
+            print(f"    - {d}/lcld_neural_m1_g1proj_seed{seed}.parquet")
+        print("  → run cells 14-16 of notebooks/g1_projection_attack.ipynb first")
         return
+    print(f"  loaded: {parq}")
 
     ds = load_dataset("lcld", {"sample_frac": SAMPLE_FRAC})
     X_train, _, X_test, _, _, _ = split_dataset(ds, random_state=seed)
