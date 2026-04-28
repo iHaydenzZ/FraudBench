@@ -1,6 +1,7 @@
 # FraudBench: Project Context
 
-> **Last updated:** 2026-02-21
+> **Last updated:** 2026-04-28
+> **Note:** §1–§8 describe the original MVP benchmark (stable since Feb 21). §9 documents the constraint-aware evaluation arc that has been the active research line since April 2026 (target: ICAIF 2026, ~July deadline).
 
 ---
 
@@ -19,7 +20,9 @@ FraudBench (FRBS — Fraud-Robust Benchmark Suite) evaluates adversarial robustn
 | Tier 3 (target) | Tier 2 + black-box attacks | Partial (Square done, HSJ 6/12) |
 | Tier 4 (stretch) | Tier 3 + Ensemble + CTGAN + Transferability | Partial (Ensemble done) |
 
-**Current position:** Tier 3 complete (Square), Tier 4 partial (Ensemble done). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Ensemble experiments complete (24 runs). Deduplicated registry at `results/registry_clean.csv` (182 rows). All figures and analysis artefacts fixed and regenerated (Feb 21).
+**Current position (MVP benchmark):** Tier 3 complete (Square), Tier 4 partial (Ensemble done). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Ensemble experiments complete (24 runs). Deduplicated registry at `results/registry_clean.csv` (182 rows). All figures and analysis artefacts fixed and regenerated (Feb 21).
+
+**Active research line (April 2026):** Constraint-aware evaluation arc targeting ICAIF 2026 (~July deadline). Phase 1 (cross-dataset feasibility audit) and Phase 3 (LCLD g1+M1 projection) complete; Phase 2 (cross-dataset extension) at 50% — IEEE-CIS OHE-projection MVP done 2026-04-22, M+OHE follow-up next. See §9 for full status and `docs/constraint_evaluation_guidance.md` for the strategic plan.
 
 ---
 
@@ -240,3 +243,50 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | Phase 4: Defence Integration | Wk 7-9 | 4 defence methods | Partial (3/4: adv training + input validation + ensemble) |
 | Phase 5: Evaluation & Benchmarking | Wk 10-12 | Full matrix + transferability + auto reports | Mostly done (CAPGD + Square + Ensemble complete, eps sweeps done, HSJ 6/12, no transferability) |
 | Phase 6: Analysis & Reporting | Wk 13 | Final report + visualizations | In progress (figures fixed, stats done, docs partial) |
+
+---
+
+## 9. Constraint-Aware Evaluation Arc (April 2026 main line)
+
+**Goal:** ICAIF 2026 paper (~July deadline, 8-page ACM format). Hypothesis: adversarial robustness on financial tabular data must account for domain constraints, attacker capabilities, and feature semantics — and stock CAPGD with post-hoc constraint filtering systematically *underestimates* realistic attack success.
+
+**Strategy doc:** `docs/constraint_evaluation_guidance.md`
+
+### Findings docs (chronological)
+
+| Date | Finding | Notebook(s) | Doc |
+|------|---------|-------------|-----|
+| 2026-04-15 | Mask ablation M0–M6 on LCLD: monotone robust accuracy gradient (0.042 → 0.340), PR-AUC locked at 0.1051 across all 8 variants | `mask_ablation.ipynb` | `mask_ablation_findings.md` |
+| ~2026-04-15 | TabularBench metric audit: accuracy vs F1/MCC ranking divergence (Kendall τ < 0.74); 10/70 degenerate TabNet models | `tabularbench_comparison.ipynb`, `tabularbench_metric_analysis.ipynb` | `tabularbench_comparison_findings.md` |
+| 2026-04-22 | Cross-dataset Phase 1 feasibility audit: refuted a-priori richness gradient; binary "constrained vs unconstrained" dichotomy; OHE-validity is universal binding constraint | `cross_dataset_feasibility.ipynb` | `cross_dataset_feasibility_findings.md` |
+| 2026-04-22 | LCLD g1-projection + M1+g1: filtered success 0.05% → 50.2% → 95.3% with flip-count delta ≤2 (same-model); M1+g1 retrains per seed (between-model caveat) | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
+| 2026-04-22 | IEEE-CIS OHE-projection MVP (Phase 2 cross-dataset replication): filtered success 0.00% → 59.7% with flip-count delta ≤5 (same-model); residual gap is `i_d_nonneg` | `ieee_cis_ohe_projection_attack.ipynb` | `ieee_ohe_projection_findings.md` |
+
+### Headline numbers (paper §5)
+
+| Dataset | Stock CAPGD FSR | Constraint-aware FSR | Stock adv feasibility | Binding constraint after projection |
+|---|---:|---:|---:|---|
+| **LCLD** | 0.05% | **95.3%** (M1+g1) | 0.093% | g3 (closed by M1) |
+| **IEEE-CIS** | 0.00% | **59.7%** (OHE-only; M+OHE pending → ~95% expected) | 0.014% | i_d_nonneg (closeable by M-mask) |
+| **Sparkov** | — (not yet attacked) | — | 0.38% | s_state / s_category / s_gender OHE |
+| **CCFD** | — (no constraint to filter) | — | 100% | None (PCA-anonymised) |
+
+### Roadmap status (per `constraint_evaluation_guidance.md` §5)
+
+| Phase | Status |
+|-------|--------|
+| Phase 1: Cross-dataset feasibility audit | ✅ Done (2026-04-22) |
+| Phase 2: Cross-dataset M+OHE replication | 🟡 50% — IEEE-CIS OHE done, M+OHE next; Sparkov OHE not started |
+| Phase 3: LCLD g1+M1 projection | ✅ Done (2026-04-22) |
+| Phase 4: Novel defence (fraud-aware AT) | ⏸ Deferred (if time permits) |
+
+### Outstanding soft blockers
+
+1. **LCLD seed-42 sparse-categorical issue** (`addr_state` / `purpose` test-only value caps clean-feasibility at 0.888 vs ~0.991 on other seeds, M1+g1 aggregate at 0.890 vs ~0.993). Fix: `OneHotEncoder(handle_unknown="ignore")` or stratify split. <1 day.
+2. **CCFD robust PR-AUC variance** (0.58 ± 0.23 across 3 seeds). Fix: more seeds or longer training; otherwise note in paper.
+
+### Cross-references
+
+- Strategic plan + dataset constraint inventory: `docs/constraint_evaluation_guidance.md`
+- Per-finding details (numbers, caveats, methodology): the 5 findings docs above
+- Implementation plans (where applicable): `docs/plans/`

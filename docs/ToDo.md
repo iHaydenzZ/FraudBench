@@ -1,11 +1,48 @@
 # FraudBench: To-Do List
 
-> **Last updated:** 2026-02-21
-> **Estimated remaining work:** P1 ~4-6h (HSJ + docs), All ~8-14h
+> **Last updated:** 2026-04-28
+> **Current active work:** Constraint-aware evaluation arc for ICAIF 2026 (~July deadline). See ICAIF section below.
+> **Legacy MVP estimated remaining work:** P1 ~4-6h (HSJ + docs), All ~8-14h — see P0/P1/P2 sections below.
 
 ---
 
-## P0 -- Must Fix (Affects Result Credibility)
+## ICAIF 2026 -- Constraint-Aware Evaluation (current main line)
+
+> Strategic doc: `docs/constraint_evaluation_guidance.md`
+> Status snapshot: `docs/Context.md` §9
+> 5 findings docs: `mask_ablation_findings.md`, `tabularbench_comparison_findings.md`, `cross_dataset_feasibility_findings.md`, `g1_projection_findings.md`, `ieee_ohe_projection_findings.md`
+> Conference deadline: ~2026-07 (8-page ACM format)
+
+### A. Highest priority -- IEEE-CIS M+OHE follow-up
+
+Build on `notebooks/ieee_cis_ohe_projection_attack.ipynb`. Add an M-mask layer to the existing OHE-projected attack:
+
+- **Mask:** mutable = `TransactionAmt`, `ProductCD` OHE, `addr1/2`, `dist1/2` (per `constraint_evaluation_guidance.md` §3.3); freeze D1–D15, C1–C14, V1–V339, card1–6
+- **Expected outcome:** agg feasibility 0.535 → ~1.0; FSR 59.7% → ~95%; flipped-count preserved within model-init noise
+- **Why it matters:** Produces the paper's cleanest cross-dataset comparison row (LCLD M1+g1 = 95.3% vs IEEE-CIS M+OHE ≈ 95%); closes the residual D-non-negativity gap noted in `ieee_ohe_projection_findings.md`
+- **Effort:** ~3 cells (mask definition, M+OHE attack loop, results table)
+
+### B. Soft blockers (`constraint_evaluation_guidance.md` §5)
+
+- [ ] LCLD seed-42 sparse-categorical fix (`OneHotEncoder(handle_unknown="ignore")` or stratify split). <1 day.
+- [ ] CCFD robust PR-AUC variance: more seeds or longer training; otherwise note in paper.
+
+### C. Lower priority -- Sparkov OHE-projection
+
+Analog of IEEE-CIS OHE-projection. Three OHE blocks: state (0.0002), category (0.017), gender (0.265) stock adv pass. Two datasets already establish the cross-dataset pattern; a third is paper-table polish, not a logical necessity.
+
+### D. Phase 1 residual (per `constraint_evaluation_guidance.md` §5)
+
+- [ ] Cross-attack robustness transfer (CAPGD adv examples vs Square / HSJ)
+- [ ] Degenerate model audit on FraudBench (TabularBench analog)
+
+### E. Deferred -- Phase 4 novel defence
+
+Fraud-aware AT (per-feature ε allocation, cost-sensitive AT). Per `constraint_evaluation_guidance.md` §5: only if time remains after Phase 2 + paper writing.
+
+---
+
+## P0 -- Must Fix (Affects Result Credibility) [Legacy MVP]
 
 ### ~~1. Re-run IEEE-CIS Experiments~~ -- DONE
 

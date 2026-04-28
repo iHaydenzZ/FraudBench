@@ -1,8 +1,10 @@
 # FraudBench: Supplementary MVP To-Do List
 
 > **Created:** 2026-02-20
+> **Last updated:** 2026-04-28
+> **Status:** All P1 items below are complete. Project focus has since shifted to the constraint-aware evaluation arc for ICAIF 2026 — see `docs/Context.md` §9 and `docs/constraint_evaluation_guidance.md`. This doc is retained as a record of the supervisor-meeting MVP scope.
 > **Purpose:** Close remaining gaps before supervisor meeting to present a complete MVP
-> **Estimated total effort:** ~16 hours
+> **Estimated total effort:** ~16 hours (retrospective; all items completed Feb–Mar 2026)
 
 ---
 
@@ -16,7 +18,12 @@ The items below are ordered by impact on MVP completeness, not by ease of implem
 
 ---
 
-## 1. Implement Ensemble Defence [P1 — NEW]
+## 1. Implement Ensemble Defence [P1 — NEW] — ✅ DONE
+
+**Status (2026-04-28):** Implemented in `defences/ensemble.py` + `models/ensemble.py`. 24 experiment runs in `results/registry_clean.csv`. Configs: `*_ensemble.yaml` and `*_ensemble_square.yaml`. Defence comparison table is now 3-way as planned.
+
+---
+
 
 **Why:** The thesis title centres on comparing defence mechanisms. Currently only Adversarial Training is effective; Input Validation is actively harmful. Adding Ensemble creates a meaningful 3-way comparison and addresses the "tree model defence vacuum" (XGBoost cannot use Adversarial Training).
 
@@ -32,7 +39,12 @@ The items below are ordered by impact on MVP completeness, not by ease of implem
 
 ---
 
-## 2. Deepen Input Validation Analysis [P1 — UPGRADED from P0 #2]
+## 2. Deepen Input Validation Analysis [P1 — UPGRADED from P0 #2] — ✅ DONE (analysis); writeup pending
+
+**Status (2026-04-28):** `scripts/analyse_input_validation.py` produces `results/figures/input_validation_analysis.csv` and `.png`. The mechanistic finding (CAPGD respects bounds → bound clip is no-op → z-score clip destroys signal) is documented numerically. Thesis Discussion writeup remains pending.
+
+---
+
 
 **Why:** Input Validation is not just "ineffective" — it is actively harmful. On Sparkov, it drops tree clean PR-AUC from 0.747 to 0.232 even without any attack. This is a strong, publishable negative finding, but it needs evidence beyond raw numbers.
 
@@ -47,7 +59,12 @@ The items below are ordered by impact on MVP completeness, not by ease of implem
 
 ---
 
-## 3. Adversarial Training Trade-off Analysis [P1 — NEW]
+## 3. Adversarial Training Trade-off Analysis [P1 — NEW] — ✅ DONE
+
+**Status (2026-04-28):** Output in `results/figures/adv_training_tradeoffs.csv`. Cross-dataset effectiveness variance (CCFD -7.2% vs Sparkov -64.6%) tabulated; tree-model architectural N/A documented as a model-family-dependent finding.
+
+---
+
 
 **Why:** Adversarial Training effectiveness varies dramatically across datasets (CCFD: -7.2% drop vs Sparkov: -64.6% drop). Understanding why is essential for the "comparative study" narrative.
 
@@ -62,7 +79,12 @@ The items below are ordered by impact on MVP completeness, not by ease of implem
 
 ---
 
-## 4. Statistical Significance Tests [P1 — UPGRADED from P2 #9]
+## 4. Statistical Significance Tests [P1 — UPGRADED from P2 #9] — ✅ DONE
+
+**Status (2026-04-28):** `scripts/statistical_tests.py` runs paired t-tests + Wilcoxon signed-rank + Cohen's d. Cross-model ensemble comparisons added Feb 21. Results in `results/figures/statistical_tests.csv`.
+
+---
+
 
 **Why:** With 3 seeds per configuration and 3 defence methods (after Ensemble), statistical tests give the comparison rigour expected of a benchmark paper.
 
@@ -78,7 +100,12 @@ The items below are ordered by impact on MVP completeness, not by ease of implem
 
 ---
 
-## 5. Generate Figures + Reproducibility Docs [P1 — EXISTING #5 + #7]
+## 5. Generate Figures + Reproducibility Docs [P1 — EXISTING #5 + #7] — ✅ DONE (figures); reproducibility docs partial
+
+**Status (2026-04-28):** `scripts/generate_figures.py` produces 6 figure types (robustness bars/curves, attack comparison, defence heatmap, training time, summary table) — all present in `results/figures/`. Reproducibility docs (dataset download URLs, README dataset sections, YAML field documentation) remain partial — see legacy `ToDo.md` §5.
+
+---
+
 
 **Why:** A benchmark is not just experiments — it requires reproducible documentation and clear visualisation. These are MVP deliverables, not enhancements.
 
