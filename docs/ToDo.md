@@ -1,6 +1,6 @@
 # FraudBench: To-Do List
 
-> **Last updated:** 2026-04-28
+> **Last updated:** 2026-04-29
 > **Current active work:** Constraint-aware evaluation arc for ICAIF 2026 (~July deadline). See ICAIF section below.
 > **Legacy MVP estimated remaining work:** P1 ~4-6h (HSJ + docs), All ~8-14h — see P0/P1/P2 sections below.
 
@@ -13,14 +13,22 @@
 > 5 findings docs: `mask_ablation_findings.md`, `tabularbench_comparison_findings.md`, `cross_dataset_feasibility_findings.md`, `g1_projection_findings.md`, `ieee_ohe_projection_findings.md`
 > Conference deadline: ~2026-07 (8-page ACM format)
 
-### A. Highest priority -- IEEE-CIS M+OHE follow-up
+### A. ~~Highest priority -- IEEE-CIS M+OHE follow-up~~ -- **DONE (2026-04-29)**
 
-Build on `notebooks/ieee_cis_ohe_projection_attack.ipynb`. Add an M-mask layer to the existing OHE-projected attack:
+`notebooks/ieee_cis_ohe_projection_attack.ipynb` Cells 13–17 (commits `385420f` + `567159d`). Result documented in `ieee_ohe_projection_findings.md` "Central finding 2".
 
-- **Mask:** mutable = `TransactionAmt`, `ProductCD` OHE, `addr1/2`, `dist1/2` (per `constraint_evaluation_guidance.md` §3.3); freeze D1–D15, C1–C14, V1–V339, card1–6
-- **Expected outcome:** agg feasibility 0.535 → ~1.0; FSR 59.7% → ~95%; flipped-count preserved within model-init noise
-- **Why it matters:** Produces the paper's cleanest cross-dataset comparison row (LCLD M1+g1 = **100%** vs IEEE-CIS M+OHE ≈ 95-100%); closes the residual D-non-negativity gap noted in `ieee_ohe_projection_findings.md`
-- **Effort:** ~3 cells (mask definition, M+OHE attack loop, results table)
+- **Outcome:** FSR saturates at **100%** (matching LCLD M1+g1); agg feasibility 0.483 → 1.000; D-non-negativity gap closed (i_d_nonneg 0.480 ± 0.41 → 1.000 ± 0.0001, 4000× variance reduction)
+- **But:** feasible-flipped count crashed from ~120 to ~7.7 per seed (16× drop). Robust accuracy bounced back to 0.897 (essentially clean). Asymmetric vs LCLD M1+g1, where attack count *increased* (~2200 → ~2888)
+- **Reframed as paper finding:** capability and feasibility are separate axes that compose differently across datasets. LCLD's mutable subset overlaps strongly with predictive features; IEEE-CIS's predictive signal lives in 339 opaque V-features that any realistic mutability profile must freeze
+- **Open follow-up promoted from "highest priority" to "next decision":** mutable-set sensitivity sweep on IEEE-CIS to map the dose-response curve along the capability axis (see §A' below)
+
+### A'. Next decision — IEEE-CIS mutable-set sensitivity sweep
+
+Optional but defensible. Bracket the M+OHE attack-count number by running:
+- **Tighter M:** just `TransactionAmt` + `ProductCD` (~6 mutable processed dims) — expected feas-flip ≈ 3
+- **Wider M:** add `P_emaildomain`, `R_emaildomain`, `M1`–`M9` (~30 mutable processed dims) — expected feas-flip somewhere between 7.7 and 120
+
+Produces a 3–4-point dose-response curve for the §5 trade-off claim. Estimated effort: 2–3 cells, ~20 min compute. Skip if paper-table polish vs Sparkov OHE-projection (§C) is the higher-priority next item.
 
 ### B. Soft blockers (`constraint_evaluation_guidance.md` §5)
 
