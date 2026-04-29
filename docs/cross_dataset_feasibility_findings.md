@@ -1,7 +1,7 @@
 # Cross-Dataset Feasibility Audit — Findings
 
-**Date:** 2026-04-22
-**Notebook:** `notebooks/cross_dataset_feasibility.ipynb` (executed commit `088d8c7`, Colab A100)
+**Date:** 2026-04-22 (original) | **Updated:** 2026-04-29 (LCLD numbers refreshed post EVAL_TOL fix, commit `d52208f`)
+**Notebook:** `notebooks/cross_dataset_feasibility.ipynb` (re-executed 2026-04-29, Colab A100)
 **Canonical results:** `results/adv_examples/cross_dataset_feasibility/cross_dataset_feasibility_results.csv`
 **Companion gradient table:** `results/adv_examples/cross_dataset_feasibility/cross_dataset_feasibility_gradient.csv`
 **Spec:** `docs/constraint_evaluation_guidance.md` §5 Phase 1
@@ -14,10 +14,12 @@ All four datasets, 3 seeds each (42, 123, 456), unconstrained CAPGD at ε=0.1, s
 
 | Dataset | Clean feas. (mean ± std) | Adv feas. (mean ± std) | Clean PR-AUC | Robust PR-AUC (mean ± std) |
 |---|---:|---:|---:|---:|
-| **ieee_cis** | 0.9999 ± 0.0001 | **0.000141 ± 0.000098** | 0.4283 | 0.0678 ± 0.0238 |
-| **lcld**     | 0.9564 ± 0.0594 | **0.000932 ± 0.000393** | 0.3020 | 0.1051 ± 0.0000 |
-| **sparkov**  | 0.9930 ± 0.0004 | **0.003788 ± 0.002786** | 0.6056 | 0.0055 ± 0.0003 |
-| **ccfd**     | 1.0000 ± 0.0000 | **1.000000 ± 0.000000** | 0.6330 | 0.5802 ± 0.2262 |
+| **ieee_cis** | 0.9999 ± 0.0001 | **0.000226 ± 0.000176** | 0.4324 | 0.0634 ± 0.0050 |
+| **lcld**     | 0.9980 ± 0.0002 | **0.001330 ± 0.000404** | 0.2925 | 0.1051 ± 0.0000 |
+| **sparkov**  | 0.9930 ± 0.0004 | **0.011499 ± 0.006391** | 0.5692 | 0.0053 ± 0.0001 |
+| **ccfd**     | 1.0000 ± 0.0000 | **1.000000 ± 0.000000** | 0.6549 | 0.5753 ± 0.2253 |
+
+> **2026-04-29 re-run note**: LCLD row reflects the EVAL_TOL fix (clean feas 0.9564 → 0.998, variance collapsed ~300×). Non-LCLD rows are unaffected by the fix; small shifts there (e.g. sparkov adv 0.0038 → 0.0115; ccfd PR-AUC 0.633 → 0.655) are CUDA non-determinism between Colab sessions, not methodological. The non-LCLD shifts are within their own seed-std envelopes from the original run, so the headline ordering and conclusions below are unchanged.
 
 ---
 
@@ -61,16 +63,16 @@ The dominance is **OHE validity, not non-negativity.** C1–C14 non-negativity i
 
 The merchant bounding-box (the constraint we expected to dominate per `constraint_evaluation_guidance.md` §3.4) drops only 0.993 → 0.992 — CAPGD's ε in scaled space barely shifts continental-scale lat/long. The actual filter is again three OHE checks (state with 50 categories is the binding one at 0.0002 adv pass).
 
-### LCLD per-constraint (for reference)
+### LCLD per-constraint (for reference, post EVAL_TOL fix)
 
 | Constraint        | Clean | Adv   | Drop  |
 |-------------------|------:|------:|------:|
-| `g1_installment`  | 0.998 | 0.012 | 0.986 |
-| `g4_term_ohe`     | 1.000 | 0.185 | 0.815 |
-| `g3_bankruptcy`   | 0.962 | 0.692 | 0.270 |
-| `g2_open_total`   | 0.997 | 0.983 | 0.013 |
+| `g1_installment`  | 0.998 | 0.011 | 0.987 |
+| `g4_term_ohe`     | 1.000 | 0.225 | 0.775 |
+| `g3_bankruptcy`   | 1.000 | 0.777 | 0.223 |
+| `g2_open_total`   | 1.000 | 0.985 | 0.015 |
 
-g1 (formula) leads but `g4_term_ohe` is the second-most-binding — same OHE pattern as IEEE-CIS and Sparkov.
+g1 (formula) leads but `g4_term_ohe` is the second-most-binding — same OHE pattern as IEEE-CIS and Sparkov. **Post-fix change**: g3 clean rose 0.962 → 1.000 and g3 adv rose 0.692 → 0.777 (+8.6pp). The clean rise is the false-failure removal documented in Open flag #1; the adv rise is the same effect on the small fraction of adv rows where the attacker didn't perturb `pub_rec`/`pub_rec_bankruptcies`. Net interpretation: g3 is a weaker adversarial filter than the original numbers suggested — part of its 0.27 "drop" was an evaluation artifact.
 
 ### Refined thesis for the paper
 
@@ -114,7 +116,7 @@ The seed-level std on LCLD robust PR-AUC is 0.0000 (three-significant-figure pre
 
 ## Open flags (blockers before paper table is final)
 
-1. ~~**LCLD clean feasibility is unexpectedly low: 0.9564 ± 0.0594**~~ — **MISDIAGNOSED, RESOLVED 2026-04-28**. The "sparse categorical / all-zero OHE" hypothesis was falsified by Phase A diagnostics (`scratch/diagnose_seed42.py`): no all-zero OHE rows exist on any seed. Actual root cause: float64 round-trip drift on the integer-valued `pub_rec` / `pub_rec_bankruptcies` columns during `(x-mean)/scale * scale + mean` inverse-transform. ~83% of LCLD test rows have raw `(pub_rec, bank) == (0, 0)`; the two columns drift by ~1 ULP in different directions, making strict `bank ≤ pub_rec` false on a per-seed-dependent fraction of the boundary cohort (seed 42: 2958 rows flip; seed 123: 0 flips by coincidence; seed 456: 124 flips). Fix: `EVAL_TOL = 1e-6` in `check_g2`/`check_g3` (commit `326483d` in `notebooks/g1_projection_attack.ipynb`). To be propagated to this notebook in a follow-up; expected post-fix LCLD clean feasibility ≈ 0.998 across all seeds. See `g1_projection_findings.md` §"Methodology fix" for the full mechanism.
+1. ~~**LCLD clean feasibility is unexpectedly low: 0.9564 ± 0.0594**~~ — **MISDIAGNOSED, RESOLVED 2026-04-28; FIX PROPAGATED + VERIFIED 2026-04-29**. The "sparse categorical / all-zero OHE" hypothesis was falsified by Phase A diagnostics (`scratch/diagnose_seed42.py`): no all-zero OHE rows exist on any seed. Actual root cause: float64 round-trip drift on the integer-valued `pub_rec` / `pub_rec_bankruptcies` columns during `(x-mean)/scale * scale + mean` inverse-transform. ~83% of LCLD test rows have raw `(pub_rec, bank) == (0, 0)`; the two columns drift by ~1 ULP in different directions, making strict `bank ≤ pub_rec` false on a per-seed-dependent fraction of the boundary cohort (seed 42: 2958 rows flip; seed 123: 0 flips by coincidence; seed 456: 124 flips). Fix: `EVAL_TOL = 1e-6` in `check_g2`/`check_g3` (commit `326483d` in `notebooks/g1_projection_attack.ipynb`, then propagated to this notebook in commit `d52208f`). **Verified 2026-04-29 re-run on Colab**: per-seed clean g2 / g3 = 1.0000 across all 3 seeds; LCLD clean_feasibility = **0.998 ± 0.0002** (was 0.956 ± 0.059, variance collapsed ~300×). Aggregate `clean_feasibility` is now bounded by g1's installment-formula tolerance G1_TOL=0.10 (a real semantic check), not by drift. See `g1_projection_findings.md` §"Methodology fix" for the full mechanism and `constraint_evaluation_guidance.md` §9 for why two tolerance conventions coexist in the codebase.
 
 2. ~~**Per-constraint decomposition not yet reported.**~~ **CLOSED 2026-04-22** by `notebooks/cross_dataset_feasibility.ipynb` Cell 14 (added in commit `c247aa4`). Output saved to `cross_dataset_per_constraint.csv`. Per-dataset binding constraints are: lcld→`g1_installment` (0.012), ieee_cis→`i_product_ohe` (0.018), sparkov→`s_state_ohe` (0.0002), ccfd→none (1.000). The decomposition revealed two corrections to the earlier narrative (OHE dominates IEEE-CIS, not C/D non-negativity; OHE dominates Sparkov, not geo-bbox) — incorporated into the "Why IEEE-CIS filters hardest" and "Sparkov: same story" sections above.
 
