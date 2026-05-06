@@ -1,9 +1,10 @@
 # IEEE-CIS OHE-Projected CAPGD — Findings
 
-**Date:** 2026-04-22 (M+OHE follow-up added 2026-04-29)
-**Notebook:** `notebooks/ieee_cis_ohe_projection_attack.ipynb` (commits `74ee475` / `567159d`, Colab A100)
-**Canonical results:** `results/adv_examples/ieee_ohe_projection/ieee_ohe_projection_results.csv` (9 rows: 3 seeds × 3 attacks)
+**Date:** 2026-04-22 (M+OHE follow-up added 2026-04-29; mutable-set sweep added 2026-05-06)
+**Notebook:** `notebooks/ieee_cis_ohe_projection_attack.ipynb` (commits `74ee475` / `567159d` / sweep run 2026-05-06, Colab A100)
+**Canonical results:** `results/adv_examples/ieee_ohe_projection/ieee_ohe_projection_results.csv` (15 rows: 3 seeds × 5 attacks)
 **Summary table:** `results/adv_examples/ieee_ohe_projection/ieee_ohe_projection_summary.csv`
+**Dose-response figure:** `results/adv_examples/ieee_ohe_projection/ieee_ohe_projection_dose_response.png`
 **Spec:** `docs/constraint_evaluation_guidance.md` §5 Phase 2 (re-scoped)
 **Predecessor:** `docs/g1_projection_findings.md` (LCLD analog)
 
@@ -69,6 +70,34 @@ Per-positive-row normalization does not rescue the symmetry: LCLD M1+g1 ≈ 2888
 The structural reason is dimensional. LCLD's M1 leaves 22 of 63 raw features mutable (~35%), and those 22 carry strong predictive signal (loan_amnt, dti, purpose, addr_state, etc.). IEEE-CIS's M leaves 6 of 53 interpretable raw features mutable (~11%), and the 339 opaque V-features that the model leans on are 100% frozen. ε=0.1 perturbations on 10 of 537 processed dimensions don't carry enough gradient signal to budge the model.
 
 This asymmetry is itself a result. **Capability constraints and feasibility constraints are not freely composable.** A mutability profile tight enough to guarantee feasibility may be tight enough to neutralize the attack — and which regime applies depends on whether the dataset's predictive signal lives in mutable or immutable features. On LCLD the predictive features and the mutable features overlap heavily (a borrower's loan amount, DTI, and address are both attacker-controlled and strongly predictive). On IEEE-CIS they don't (Vesta's V-features dominate predictions but are immutable internal aggregates).
+
+---
+
+## Central finding 3 — capability-axis dose-response is non-monotone
+
+The 2026-05-06 mutable-set sweep brackets the canonical M+OHE point with two additional capability levels (`M_tight = {TransactionAmt, ProductCD}` ≈ 6 mutable processed dims; `M_wide = M_canonical ∪ {P_emaildomain, R_emaildomain, M1..M9}` ≈ 155 mutable processed dims). Combined with the existing `unconstrained` and `oheproj` rows this yields a 5-point dose-response curve along the capability axis. Mean ± std over 3 seeds (42/123/456):
+
+| Attack            | Mutable dims | Robust PR-AUC | Adv feasibility | Feas-flipped | FSR    |
+|-------------------|-------------:|--------------:|----------------:|-------------:|-------:|
+| `unconstrained`   | 537          | 0.063         | 0.0002          | **0**        | 0.0%   |
+| `oheproj`         | 537          | 0.065         | 0.507           | 81           | 39.6%  |
+| `m_tight_oheproj` | 6            | **0.414**     | **1.000**       | **2.3**      | 100.0% |
+| `m_oheproj`       | 10           | 0.409         | 1.000           | 7.3          | 100.0% |
+| `m_wide_oheproj`  | ~155         | 0.099         | 1.000           | **207**      | 100.0% |
+
+Per-seed `m_wide_oheproj` flipped counts: 225 / 207 / 189. Per-seed `m_tight_oheproj`: 5 / 0 / 2.
+
+Three observations the dose-response curve forces.
+
+**1. The capability-vs-feasibility trade-off has a knee, not a slope.** Going from canonical M (10 dims) to wide M (155 dims) collapses robust PR-AUC by ~4x (0.41 → 0.10) — essentially recovering the unconstrained-attack damage level (0.063) — while feasibility holds at 1.000. The transition is sharp, and the 6 → 10 → 155 → 537 x-axis covers four very different model behaviours.
+
+**2. M_wide produces *more* feasible attacks than `oheproj` (207 vs 81), with strictly fewer mutable dimensions to perturb.** This is initially counter-intuitive but mechanically clean: `oheproj` only enforces categorical OHE validity, so ~50% of its perturbations violate D-non-negativity (unfrozen D-columns drift below zero) and get filtered out. M_wide adds the immutable mask that freezes D / C / V / card features outright, so every perturbation passes feasibility. **Capability and feasibility together are strictly stronger than either axis alone.** The composition is not additive — adding an immutable mask on top of a wide capability profile produces more feasible attacks than removing the mask altogether.
+
+**3. The dominant lever for M_wide is email-domain mutability, not M-flag mutability.** The +145 mutable processed dims that separate canonical M (10 dims) from wide M (155 dims) come almost entirely from `P_emaildomain` and `R_emaildomain` OHE expansion (~60 unique values each → ~120 dims), with M1..M9 contributing ~12-24 dims. Conceding email-domain mutability alone is therefore enough to break IEEE-CIS robustness under a fully-feasible threat model.
+
+**Threat-model implication for §5.** A defender's robust PR-AUC on IEEE-CIS depends almost entirely on whether the threat model concedes email-domain mutability. If the defender's mutability profile freezes email domains (canonical M), feasible attack count is 7.3/seed and robust PR-AUC stays near 0.41. If it unfreezes them (wide M), feasible attack count jumps to 207/seed (a ~28x increase) and robust PR-AUC collapses to 0.10. Email-domain mutability is the single most consequential threat-model decision for this dataset.
+
+This refines Central finding 2: the LCLD-vs-IEEE-CIS asymmetry isn't just "M+OHE crashes attack count on IEEE-CIS but lifts it on LCLD." It's "the IEEE-CIS attack-count number depends on a single mutability decision (email domains) by a factor of 28, and that decision is what most fraud threat models would actually concede." The capability-vs-feasibility trade-off is real, but the operating point is not pre-determined — it's a research-design choice that the paper should make explicit.
 
 ---
 
@@ -138,7 +167,7 @@ Robust PR-AUC was previously locked at 0.07 ± 0.01 across stock vs OHE-projecte
 
 6. **Class imbalance.** IEEE-CIS pos_weight=27.01 (~3.6% positive class) means flipped-positive counts are an order of magnitude smaller than LCLD's (~220 vs ~2700). The proportional damage at the OHE step is similar; absolute counts are not directly comparable. M+OHE drives counts to single-digit territory where Poisson-style noise becomes meaningful.
 
-7. **Mutable feature set is "candidate" per `constraint_evaluation_guidance.md` §3.3.** TransactionAmt, ProductCD are well-supported (attacker-controlled by definition). addr1/2 and dist1/2 are inferred. A reviewer could push back, in which case the most defensible mutable set collapses to TransactionAmt + ProductCD only (~6 mutable processed dims), which would presumably crash attack count further. A sensitivity sweep across mutable-set choices is open follow-up work.
+7. ~~**Mutable feature set is "candidate" per `constraint_evaluation_guidance.md` §3.3.**~~ — **closed by 2026-05-06 sweep.** A reviewer pushback to the most defensible tight mutable set (`TransactionAmt + ProductCD`) yields feas-flip = 2.3/seed (vs 7.3 at canonical M). The wider direction (concede email domains and M1..M9) yields 207/seed. Both numbers are now reported as Central finding 3; the canonical M point is no longer load-bearing — the curve is.
 
 ---
 
@@ -148,7 +177,7 @@ Phase 2 cross-dataset MVP is complete. The OHE-projection-step finding from Phas
 
 **Immediate next steps (decision points):**
 
-1. **Mutable-set sensitivity sweep on IEEE-CIS** — bracket the 7.7 feas-flip number by running a tighter M (just TransactionAmt + ProductCD; expected ~3 feas-flip) and a wider M (add P/R_emaildomain, M1–M9, more addr/dist; expected somewhere between 7.7 and 120). This produces a dose-response curve along the capability axis and lets the paper claim "we mapped the trade-off" instead of "we hit one point". Estimated effort: 2–3 cells, ~20 min compute.
+1. ~~**Mutable-set sensitivity sweep on IEEE-CIS**~~ — **DONE 2026-05-06.** See Central finding 3. The curve has 5 points (mutable dims = 6 / 10 / 155 / 537 / 537) and shows a sharp knee between canonical M and wide M, with the wide-M operating point producing more feasible attacks (207) than the OHE-only baseline (81). The §5 paper claim is now "we mapped the trade-off and identified email-domain mutability as the dominant lever," not "we hit one point."
 
 2. **Sparkov OHE-projection (lower priority).** Same exercise as IEEE-CIS step (1) but on the third constrained dataset — 3-OHE projection on state/category/gender. Per `cross_dataset_feasibility_findings.md`, Sparkov's binding constraints are also OHE-validity checks, so the OHE-projection step should reproduce. Sparkov M is harder to define (geo-consistency makes lat/long mutable but coupled). Two datasets already establish the OHE-projection pattern; a third is paper-table polish.
 

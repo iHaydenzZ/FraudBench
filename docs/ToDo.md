@@ -34,13 +34,24 @@
 - **Reframed as paper finding:** capability and feasibility are separate axes that compose differently across datasets. LCLD's mutable subset overlaps strongly with predictive features; IEEE-CIS's predictive signal lives in 339 opaque V-features that any realistic mutability profile must freeze
 - **Open follow-up promoted from "highest priority" to "next decision":** mutable-set sensitivity sweep on IEEE-CIS to map the dose-response curve along the capability axis (see §A' below)
 
-### A'. Next decision — IEEE-CIS mutable-set sensitivity sweep
+### A'. ~~Next decision — IEEE-CIS mutable-set sensitivity sweep~~ — **DONE (2026-05-06)**
 
-Optional but defensible. Bracket the M+OHE attack-count number by running:
-- **Tighter M:** just `TransactionAmt` + `ProductCD` (~6 mutable processed dims) — expected feas-flip ≈ 3
-- **Wider M:** add `P_emaildomain`, `R_emaildomain`, `M1`–`M9` (~30 mutable processed dims) — expected feas-flip somewhere between 7.7 and 120
+Notebook Cells 18–21 (`notebooks/ieee_cis_ohe_projection_attack.ipynb`); 6 new rows appended to `ieee_ohe_projection_results.csv` (3 seeds × `m_tight_oheproj` + `m_wide_oheproj`); summary regenerated; `ieee_ohe_projection_dose_response.png` saved. Result documented in `ieee_ohe_projection_findings.md` "Central finding 3".
 
-Produces a 3–4-point dose-response curve for the §5 trade-off claim. Estimated effort: 2–3 cells, ~20 min compute. Skip if paper-table polish vs Sparkov OHE-projection (§C) is the higher-priority next item.
+**5-point dose-response curve** (mean over 3 seeds, mutable processed dims / feas-flip / robust PR-AUC):
+
+- `unconstrained` — 537 / 0 / 0.063
+- `oheproj` — 537 / 81 / 0.065
+- **`m_tight_oheproj`** — 6 / **2.3** / 0.414
+- **`m_oheproj` (canonical)** — 10 / **7.3** / 0.409
+- **`m_wide_oheproj`** — ~155 / **207** / 0.099
+
+**Three findings (refines §A "Central finding 2"):**
+1. The capability-vs-feasibility trade-off has a **knee, not a slope** — robust PR-AUC collapses ~4× between canonical M (10 dims) and wide M (155 dims).
+2. M_wide produces *more* feasible attacks (207) than `oheproj` (81) despite fewer mutable dims — capability + immutable mask compose **non-additively**.
+3. Email-domain mutability (`P_emaildomain` + `R_emaildomain` OHE expansion, ~120 of the 145 added dims) is the **dominant lever**: the IEEE-CIS attack-count number swings 28× depending on a single threat-model decision.
+
+§5 paper claim is now: "we mapped the trade-off and identified email-domain mutability as the dominant operating-point lever," not "we hit one point."
 
 ### B. Soft blockers (`constraint_evaluation_guidance.md` §5)
 
@@ -68,7 +79,7 @@ Promoted from "deferred Phase 4" to primary research contribution on 2026-05-06.
 - [ ] Ablation **plan** (motivation + design — not results) (W9 stub)
 - [ ] LCLD single-seed sanity check: code runs, loss decreases (E4)
 - [ ] OHE projection repair implementation (FA-AT baseline) (E3)
-- [ ] §A' IEEE-CIS sensitivity sweep (~20 min compute) (E1)
+- [x] ~~§A' IEEE-CIS sensitivity sweep (~20 min compute) (E1)~~ — **done 2026-05-06**, see §A' above
 - [ ] HopSkipJump remaining runs (E2)
 
 #### Tier 1 — by 2026-05-29 thesis final (thesis-grade evidence)

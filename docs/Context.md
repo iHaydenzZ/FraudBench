@@ -22,7 +22,7 @@ FraudBench (FRBS — Fraud-Robust Benchmark Suite) evaluates adversarial robustn
 
 **Current position (MVP benchmark):** Tier 3 complete (Square), Tier 4 partial (Ensemble done). HopSkipJump 6/12 (ccfd done; ieee_cis 2/3; lcld 1/3; sparkov 0/3). All CAPGD + epsilon sweep experiments complete. Ensemble experiments complete (24 runs). Deduplicated registry at `results/registry_clean.csv` (182 rows). All figures and analysis artefacts fixed and regenerated (Feb 21).
 
-**Active research line (April 2026):** Constraint-aware evaluation arc targeting ICAIF 2026 (~July deadline). Phase 1 (cross-dataset feasibility audit) and Phase 3 (LCLD g1+M1 projection) complete; Phase 2 (cross-dataset extension) at 50% — IEEE-CIS OHE-projection MVP done 2026-04-22, M+OHE follow-up next. See §9 for full status and `docs/constraint_evaluation_guidance.md` for the strategic plan.
+**Active research line (April–May 2026):** Constraint-aware evaluation arc targeting ICAIF 2026. Phase 1 (cross-dataset feasibility audit), Phase 2 (IEEE-CIS OHE + M+OHE + 5-point dose-response sweep) and Phase 3 (LCLD g1+M1 projection) all complete as of 2026-05-06. FA-AT (Fraud-Aware AT) is now the active primary research line — see §10. Strategy doc: `docs/constraint_evaluation_guidance.md`; master plan: `docs/FraudBench_Thesis_ICAIF_Plan.md`.
 
 ---
 
@@ -263,13 +263,14 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | 2026-04-22 | LCLD g1-projection + M1+g1 (initial): reported 0.05% → 50.2% → 95.3% — superseded by 2026-04-28 fix below | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
 | 2026-04-28 | LCLD g1+M1 corrected (EVAL_TOL fix, commit `326483d`): filtered success **0.11% → 76.5% → 100.0%** with flip-count delta ≤1 (same-model). Soft blocker resolved — root cause was float64 round-trip drift on integer-valued g3 columns, not a sparse-categorical artifact. | `g1_projection_attack.ipynb` | `g1_projection_findings.md` |
 | 2026-04-22 | IEEE-CIS OHE-projection MVP (Phase 2 cross-dataset replication): filtered success 0.00% → 59.7% with flip-count delta ≤5 (same-model); residual gap is `i_d_nonneg` | `ieee_cis_ohe_projection_attack.ipynb` | `ieee_ohe_projection_findings.md` |
+| 2026-05-06 | IEEE-CIS mutable-set dose-response sweep: 5-point capability curve (mut dims 6 / 10 / 155 / 537 / 537). Sharp knee between canonical M (10 dims, feas-flip 7.3) and wide M (155 dims, feas-flip 207). Email-domain mutability is the dominant lever. M_wide produces *more* feasible attacks than `oheproj` (207 vs 81) despite fewer mutable dims — capability + immutable mask compose non-additively. | `ieee_cis_ohe_projection_attack.ipynb` | `ieee_ohe_projection_findings.md` (Central finding 3) |
 
 ### Headline numbers (paper §5)
 
 | Dataset | Stock CAPGD FSR | Constraint-aware FSR | Stock adv feasibility | Binding constraint after projection |
 |---|---:|---:|---:|---|
 | **LCLD** | 0.11% | **100.0%** (M1+g1) | 0.12% | g3 (closed by M1, after EVAL_TOL fix) |
-| **IEEE-CIS** | 0.00% | **59.7%** (OHE-only; M+OHE pending → ~95% expected) | 0.014% | i_d_nonneg (closeable by M-mask) |
+| **IEEE-CIS** | 0.00% | **100.0%** (M+OHE; 5-point dose-response sweep done 2026-05-06) | 0.014% | i_d_nonneg (closed by M-mask) |
 | **Sparkov** | — (not yet attacked) | — | 0.38% | s_state / s_category / s_gender OHE |
 | **CCFD** | — (no constraint to filter) | — | 100% | None (PCA-anonymised) |
 
@@ -278,7 +279,7 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | Phase | Status |
 |-------|--------|
 | Phase 1: Cross-dataset feasibility audit | ✅ Done (2026-04-22) |
-| Phase 2: Cross-dataset M+OHE replication | 🟡 50% — IEEE-CIS OHE + M+OHE done (2026-04-29), Sparkov OHE deprioritised (paper-table polish, not logical necessity) |
+| Phase 2: Cross-dataset M+OHE replication | 🟢 IEEE-CIS arc complete — OHE + M+OHE + 5-point dose-response sweep done (2026-04-22 / 2026-04-29 / 2026-05-06). Sparkov OHE deprioritised (paper-table polish, not logical necessity). |
 | Phase 3: LCLD g1+M1 projection | ✅ Done (2026-04-28, post EVAL_TOL fix) |
 | Phase 4: Novel defence (fraud-aware AT / FA-AT) | 🟢 **Active primary line as of 2026-05-06** — see §10 |
 
