@@ -1,7 +1,7 @@
 # FraudBench: Project Context
 
-> **Last updated:** 2026-04-28
-> **Note:** §1–§8 describe the original MVP benchmark (stable since Feb 21). §9 documents the constraint-aware evaluation arc that has been the active research line since April 2026 (target: ICAIF 2026, ~July deadline).
+> **Last updated:** 2026-05-06
+> **Note:** §1–§8 describe the original MVP benchmark (stable since Feb 21). §9 documents the constraint-aware evaluation arc that has been the active research line since April 2026 (target: **ICAIF 2026, deadline 2026-08-02**). §10 documents the FA-AT (Fraud-Aware AT) work that became the primary research line on 2026-05-06 and feeds both the **thesis (draft 2026-05-15, final 2026-05-29)** and the ICAIF paper. **Master plan:** `docs/FraudBench_Thesis_ICAIF_Plan.md`.
 
 ---
 
@@ -248,9 +248,10 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 
 ## 9. Constraint-Aware Evaluation Arc (April 2026 main line)
 
-**Goal:** ICAIF 2026 paper (~July deadline, 8-page ACM format). Hypothesis: adversarial robustness on financial tabular data must account for domain constraints, attacker capabilities, and feature semantics — and stock CAPGD with post-hoc constraint filtering systematically *underestimates* realistic attack success.
+**Goal:** ICAIF 2026 paper (deadline **2026-08-02**, 8-page ACM 2-column, no appendix). Hypothesis: adversarial robustness on financial tabular data must account for domain constraints, attacker capabilities, and feature semantics — and stock CAPGD with post-hoc constraint filtering systematically *underestimates* realistic attack success.
 
 **Strategy doc:** `docs/constraint_evaluation_guidance.md`
+**Master plan (thesis + ICAIF, dual-track):** `docs/FraudBench_Thesis_ICAIF_Plan.md`
 
 ### Findings docs (chronological)
 
@@ -277,9 +278,9 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 | Phase | Status |
 |-------|--------|
 | Phase 1: Cross-dataset feasibility audit | ✅ Done (2026-04-22) |
-| Phase 2: Cross-dataset M+OHE replication | 🟡 50% — IEEE-CIS OHE done, M+OHE next; Sparkov OHE not started |
-| Phase 3: LCLD g1+M1 projection | ✅ Done (2026-04-22) |
-| Phase 4: Novel defence (fraud-aware AT) | ⏸ Deferred (if time permits) |
+| Phase 2: Cross-dataset M+OHE replication | 🟡 50% — IEEE-CIS OHE + M+OHE done (2026-04-29), Sparkov OHE deprioritised (paper-table polish, not logical necessity) |
+| Phase 3: LCLD g1+M1 projection | ✅ Done (2026-04-28, post EVAL_TOL fix) |
+| Phase 4: Novel defence (fraud-aware AT / FA-AT) | 🟢 **Active primary line as of 2026-05-06** — see §10 |
 
 ### Outstanding soft blockers
 
@@ -293,3 +294,41 @@ Dataset-dependent tests skip automatically via `@pytest.mark.skipif` decorators.
 - Strategic plan + dataset constraint inventory: `docs/constraint_evaluation_guidance.md`
 - Per-finding details (numbers, caveats, methodology): the 5 findings docs above
 - Implementation plans (where applicable): `docs/plans/`
+
+---
+
+## 10. FA-AT Primary Research Line + Dual-Track Writing (May 2026)
+
+**As of 2026-05-06**, FA-AT (Fraud-Aware Adversarial Training) was promoted from "deferred Phase 4" to the primary research contribution, with a dual-track writing schedule:
+
+| Milestone | Date | Type |
+|---|---|---|
+| Thesis draft (supervisor review) | **2026-05-15** | Internal — structure / method / ablation plan; experimental results not required |
+| Thesis final | **2026-05-29** | ≥ 40 pages, accepts negative results + long limitations |
+| ICAIF 2026 submission | **2026-08-02** | 8 pages ACM 2-column, no appendix, CMT system |
+
+**Master plan:** `docs/FraudBench_Thesis_ICAIF_Plan.md` — contains tier specs (Tier 0/1/2), 88-day phased plan (Phase 1A 5/06–5/15, Phase 1B 5/16–5/29, Phase 2 5/30–8/02), Plan B trigger at 5/22 mid-point, task IDs E1–E11 / W1–W13 / I1–I6.
+
+### Tiered FA-AT specification
+
+| Tier | Target | Required outputs |
+|---|---|---|
+| Tier 0 (by 5/15 draft) | Method *plausibility* | Per-feature ε formula, cost-sensitive loss form, mutability classification table, ablation **plan**, LCLD single-seed sanity check (loss decreases) |
+| Tier 1 (by 5/29 thesis) | Thesis-grade evidence | 3 datasets (LCLD + Sparkov + IEEE-CIS), 3 seeds, Wilcoxon + Cohen's d, 2 ablations (cost on/off × per-feature ε on/off), cross-attack transfer, §D degenerate audit |
+| Tier 2 (by 8/02 ICAIF) | Single-claim narrative | 4 datasets, 5 seeds, compact 2×2 ablation table, cross-attack robustness figure, vs. Foe for Fraud differentiation |
+
+### 5/22 Plan B trigger
+
+Mid-point of Phase 1B. FA-AT vs. standard AT effect size determines ICAIF framing:
+
+| Cohen's d observation | ICAIF framing |
+|---|---|
+| ≥ 0.5 on ≥ 2 datasets | **A** — FA-AT primary contribution |
+| 0.2 – 0.5 | A but weakened; expand dataset count in Phase 2 |
+| < 0.2 across all datasets | **B** — OHE structural floor primary, FA-AT secondary (negative-finding framing) |
+
+Thesis (5/29) accepts negative results regardless — Plan B only affects the 8-page ICAIF rewrite.
+
+### Writing strategy
+
+Thesis and ICAIF paper are **two separate documents**, not compress/expand siblings. Phase 2 (5/30 onward) **rewrites** the 8-page paper from a blank document; thesis content is the experimental repository it draws from, not a draft to compress.

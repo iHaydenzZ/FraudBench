@@ -1,8 +1,9 @@
 # FraudBench Constraint-Aware Evaluation: Strategic Guidance
 
-**Date:** 2026-04-15 (last updated 2026-04-29)
-**Status:** Internal guidance document
-**Target venue:** ICAIF 2026 (~July deadline, 8-page ACM format)
+**Date:** 2026-04-15 (last updated 2026-05-06)
+**Status:** Internal guidance document — superseded for scheduling/scoping by `docs/FraudBench_Thesis_ICAIF_Plan.md` (2026-05-06). This doc remains canonical for the constraint-aware findings synthesis (§1–§4, §6) and the per-dataset constraint inventory (§3).
+**Target venue:** ICAIF 2026 (deadline **2026-08-02**, 8-page ACM 2-column, no appendix)
+**Companion thesis:** ELEC5021 Capstone Project B (draft 2026-05-15, final 2026-05-29, ≥ 40 pages)
 **Prerequisites:** TabularBench comparison findings, Mask ablation findings, **Cross-dataset feasibility findings (Phase 1, 2026-04-22)**, **g1-projection findings (Phase 3 + M1+g1, 2026-04-22)**, **IEEE-CIS OHE-projection findings (Phase 2 cross-dataset MVP, 2026-04-22)**
 
 ---
@@ -255,12 +256,17 @@ The Phase 1 audit refuted the tiered framework Phase 2 was designed to support, 
 | **M1 mask + g1 projection (follow-up)** | ✅ **Done** | Same doc. Closes g3 credit-bureau gap completely; filtered success 0.11% → 76.5% → **100.0%** (saturates). Includes float64 installment re-derivation fix (commit `adcd78d`) and EVAL_TOL=1e-6 fix for round-trip drift on integer-valued constraint columns (commit `326483d`). |
 | **Constrained vs unconstrained systematic comparison** | ✅ **Done** | Same trained model per seed for the unconstrained vs g1-projected pair; M1+g1 retrains (between-model caveat documented). |
 
-### Phase 4: Novel Defence — Fraud-Aware AT (if time permits)
+### Phase 4: Novel Defence — Fraud-Aware AT (FA-AT) — **PROMOTED TO PRIMARY LINE 2026-05-06**
+
+Now the primary research contribution feeding both thesis (5/29) and ICAIF paper (8/02). Tiered specification (Tier 0/1/2), 88-day phased plan, and 5/22 Plan B trigger live in **`docs/FraudBench_Thesis_ICAIF_Plan.md`** §2–§5; this section is retained for historical context.
 
 | Experiment | What it produces | Effort |
 |-----------|-----------------|--------|
-| **Per-feature ε allocation** | Allocate perturbation budget proportional to feature mutability + cost during adversarial training | ~1 week |
+| **Per-feature ε allocation** | Allocate perturbation budget proportional to feature mutability + cost during adversarial training | ~1 week (Tier 0 sanity by 5/15; Tier 1 multi-seed by 5/29) |
 | **Cost-sensitive weighting** | Higher AT weight for high-value transactions | ~3 days |
+| **2 ablations (Tier 1)** | (i) cost weighting on/off; (ii) per-feature ε on/off | included in 5/16–5/22 sprint |
+| **Cross-attack transfer (Tier 1)** | CAPGD-trained FA-AT vs. Square / HSJ attacks | thesis main result, not appendix |
+| **Tier 2 expansion (Phase 2)** | 4 datasets × 5 seeds + compact 2×2 ablation table + Foe for Fraud differentiation | 5/30 → 8/02 |
 
 ### Soft blockers before paper table is final
 
