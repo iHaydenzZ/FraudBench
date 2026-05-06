@@ -20,6 +20,11 @@ results/*.joblib
 results/*.json
 results/models/
 
+# Parquet adv-example dumps (~250 MB across all subdirs; reproducible
+# from notebooks, mirrored on Drive). Commit small CSVs/PNGs that
+# findings docs cite, not raw post-attack feature matrices.
+results/**/*.parquet
+
 # Raw data files (not source code in datasets/)
 datasets/CCFD/
 datasets/ieee-fraud-detection/
