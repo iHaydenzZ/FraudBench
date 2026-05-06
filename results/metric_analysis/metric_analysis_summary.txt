@@ -1,0 +1,49 @@
+
+======================================================================
+           SUMMARY: TabularBench Metric Analysis
+======================================================================
+
+DIRECTION 3 -- ADV vs ADV+CTR GAP
+----------------------------------
+We mapped FraudBench's LCLD results into TabularBench's ADV/ADV+CTR
+evaluation framework:
+
+  * Clean Recall (ID):     0.5542 (55.42%)
+  * ADV (unmasked):        0.0027 (0.27%)
+  * ADV (masked):          0.0088 (0.88%)
+  * ADV+CTR (unmasked):    0.5538 (55.38%)
+  * ADV+CTR (masked):      0.5536 (55.36%)
+  * Gap (unmasked):        +55.11 pp
+  * Gap (masked):          +54.48 pp
+
+Key finding: FraudBench's CAPGD attack is nearly 100% effective at
+flipping positive predictions (ADV ~ 0%), but >99.8% of adversarial
+examples violate domain constraints. Post-hoc constraint filtering
+restores predictions to near-clean levels (ADV+CTR ~ clean recall).
+
+This produces the LARGEST gap on the LCLD leaderboard — TabularBench's
+constraint-aware CAA attack shows gaps of only 0.8-12.8 pp for
+adversarially-trained models.
+
+DIRECTION 7 -- RANKING METRIC SENSITIVITY
+------------------------------------------
+We re-ranked TabularBench's 70-model LCLD leaderboard
+under alternative metrics:
+
+  * Degenerate models found: 10
+    (achieving high ADV+CTR via trivial all-positive prediction)
+
+  * Rank correlation (Original accuracy-based vs alternatives):
+    Original vs F1           : tau=0.6633, rho=0.7925
+    Original vs MCC          : tau=0.6825, rho=0.8118
+    Original vs AUC          : tau=0.6812, rho=0.8223
+    Original vs Harmonic     : tau=0.7346, rho=0.8629
+
+Key finding: Metric choice substantially changes model rankings.
+Accuracy-based ranking (used by TabularBench) rewards degenerate models
+and does not correlate strongly with metrics appropriate for imbalanced
+fraud detection (F1, MCC).
+
+This motivates FraudBench's design choice of PR-AUC as the primary
+evaluation metric.
+======================================================================
