@@ -195,9 +195,7 @@ class TestConstraintValidator:
         # strict comparison rejected such rows, inflating per-seed feasibility
         # variance on LCLD (±0.059 → ±0.0002 after fix).
         schema = ConstraintSchema()
-        schema.features["pub_rec"] = FeatureConstraint(
-            name="pub_rec", type="numeric", min_val=0.0, max_val=10.0
-        )
+        schema.features["pub_rec"] = FeatureConstraint(name="pub_rec", type="numeric", min_val=0.0, max_val=10.0)
         validator = ConstraintValidator(schema)
 
         drifted = pd.Series({"pub_rec": -1e-7})
@@ -210,9 +208,7 @@ class TestConstraintValidator:
         # Tightening eval_tol to 0 restores the pre-fix strict behaviour, which
         # lets callers reproduce the legacy per-seed variance for ablation.
         schema = ConstraintSchema()
-        schema.features["pub_rec"] = FeatureConstraint(
-            name="pub_rec", type="numeric", min_val=0.0, max_val=10.0
-        )
+        schema.features["pub_rec"] = FeatureConstraint(name="pub_rec", type="numeric", min_val=0.0, max_val=10.0)
 
         assert EVAL_TOL > 0
         strict = ConstraintValidator(schema, eval_tol=0.0)
