@@ -2,9 +2,17 @@ from .schema import ConstraintSchema
 import pandas as pd
 
 
+# Absolute tolerance for numeric bound checks. Counter-acts ~1-ULP drift
+# introduced by StandardScaler.inverse_transform on integer-valued
+# non-negative columns (e.g. LCLD pub_rec, pub_rec_bankruptcies).
+# See docs/FIX_DOCUMENT.md and g1_projection_findings.md.
+EVAL_TOL = 1e-6
+
+
 class ConstraintValidator:
-    def __init__(self, schema: ConstraintSchema):
+    def __init__(self, schema: ConstraintSchema, eval_tol: float = EVAL_TOL):
         self.schema = schema
+        self.eval_tol = eval_tol
 
     def validate_sample(self, x: pd.Series) -> bool:
         """Validates a single sample."""
@@ -23,9 +31,9 @@ class ConstraintValidator:
                     return False  # NaN not expected
 
             if constraint.type == "numeric":
-                if constraint.min_val is not None and val < constraint.min_val:
+                if constraint.min_val is not None and val < constraint.min_val - self.eval_tol:
                     return False
-                if constraint.max_val is not None and val > constraint.max_val:
+                if constraint.max_val is not None and val > constraint.max_val + self.eval_tol:
                     return False
                 # Non-negative check is covered by min_val >= 0 effectively
 

@@ -31,6 +31,7 @@
 
 - **Outcome:** FSR saturates at **100%** (matching LCLD M1+g1); agg feasibility 0.483 → 1.000; D-non-negativity gap closed (i_d_nonneg 0.480 ± 0.41 → 1.000 ± 0.0001, 4000× variance reduction)
 - **But:** feasible-flipped count crashed from ~120 to ~7.7 per seed (16× drop). Robust accuracy bounced back to 0.897 (essentially clean). Asymmetric vs LCLD M1+g1, where attack count *increased* (~2200 → ~2888)
+  - *Numbers above are the 2026-04-29 snapshot; superseded by the 2026-05-06 canonical sweep (~81 → ~7.3, 11× drop) — see §A' and `ieee_ohe_projection_findings.md`.*
 - **Reframed as paper finding:** capability and feasibility are separate axes that compose differently across datasets. LCLD's mutable subset overlaps strongly with predictive features; IEEE-CIS's predictive signal lives in 339 opaque V-features that any realistic mutability profile must freeze
 - **Open follow-up promoted from "highest priority" to "next decision":** mutable-set sensitivity sweep on IEEE-CIS to map the dose-response curve along the capability axis (see §A' below)
 

@@ -20,33 +20,33 @@ IEEE-CIS only, 3 seeds (42/123/456), CAPGD ε=0.1 / 10 steps, neural MLP (128-di
 
 (1) and (2) share a trained MLP per seed (same-model comparison); (3) retrains per seed (between-model — see Caveat 5). Mean ± std over seeds.
 
-| Attack          | Flipped     | Feas-flipped | **Filtered success** | Agg. feas.        | ProductCD | card4 | card6 | D-nonneg          | Robust acc.   | Robust PR-AUC   |
-|-----------------|------------:|-------------:|---------------------:|------------------:|----------:|------:|------:|------------------:|--------------:|----------------:|
-| unconstrained   | 220.7 ± 2.1 | 0            | **0.0%**             | 0.0001 ± 0.0001   | 0.044     | 0.062 | 0.248 | 0.480 ± 0.413     | 0.145 ± 0.016 | 0.077 ± 0.003   |
-| OHE-projected   | 220.0 ± 2.0 | 120 ± 80     | **54.5%**            | 0.483 ± 0.411     | **1.000** | **1.000** | **1.000** | 0.483 ± 0.411 | 0.155 ± 0.014 | 0.082 ± 0.003   |
-| **M + OHE**     | **7.7 ± 1.2** | **7.7 ± 1.2** | **100.0%**       | **1.000 ± 0.0001**| **1.000** | **1.000** | **1.000** | **1.000 ± 0.0001** | **0.897 ± 0.020** | **0.402 ± 0.046** |
+| Attack          | Flipped     | Feas-flipped | **Filtered success** | Agg. feas.          | ProductCD | card4 | card6 | D-nonneg            | Robust acc.   | Robust PR-AUC   |
+|-----------------|------------:|-------------:|---------------------:|--------------------:|----------:|------:|------:|--------------------:|--------------:|----------------:|
+| unconstrained   | 204.3 ± 5.8 | 0            | **0.0%**             | 0.00023 ± 0.00021   | 0.039     | 0.035 | 0.214 | 0.507 ± 0.388       | 0.160 ± 0.012 | 0.063 ± 0.010   |
+| OHE-projected   | 203.7 ± 6.4 | 80.7 ± 54.3  | **39.6%**            | 0.507 ± 0.386       | **1.000** | **1.000** | **1.000** | 0.507 ± 0.386   | 0.170 ± 0.013 | 0.065 ± 0.010   |
+| **M + OHE**     | **7.3 ± 4.6** | **7.3 ± 4.6** | **100.0%**       | **0.9999 ± 0.0001** | **1.000** | **1.000** | **1.000** | **0.99997 ± 0.00005** | **0.883 ± 0.010** | **0.409 ± 0.040** |
 
 Per-seed raw counts:
 
 | Seed | Attack         | Flipped | Feas-flipped | Agg. feas. | ProductCD | card4 | card6 | D-nonneg  | Robust PR-AUC |
 |-----:|----------------|--------:|-------------:|-----------:|----------:|------:|------:|----------:|--------------:|
-| 42   | unconstrained  | 219     | 0            | 0.0000     | 0.060     | 0.023 | 0.217 | 0.386     | 0.0772        |
-| 42   | OHE-projected  | 220     | 30           | 0.3974     | **1.000** | **1.000** | **1.000** | 0.397 | 0.0817      |
-| 42   | **M + OHE**    | **9**   | **9**        | **1.0000** | **1.000** | **1.000** | **1.000** | **1.000** | **0.3901** |
-| 123  | unconstrained  | 220     | 0            | 0.0003     | 0.021     | 0.035 | 0.297 | 0.931     | 0.0803        |
-| 123  | OHE-projected  | 218     | 147          | **0.9293** | **1.000** | **1.000** | **1.000** | 0.929 | 0.0860      |
-| 123  | **M + OHE**    | **7**   | **7**        | **0.9998** | **1.000** | **1.000** | **0.9999** | **1.000** | **0.4520** |
-| 456  | unconstrained  | 223     | 0            | 0.0002     | 0.051     | 0.129 | 0.230 | 0.121     | 0.0750        |
-| 456  | OHE-projected  | 222     | 183          | 0.1217     | **1.000** | **1.000** | **1.000** | 0.122 | 0.0793      |
-| 456  | **M + OHE**    | **7**   | **7**        | **1.0000** | **1.000** | **1.000** | **1.000** | **1.000** | **0.3632** |
+| 42   | unconstrained  | 211     | 0            | 0.0000     | 0.030     | 0.032 | 0.199 | 0.406     | 0.0611        |
+| 42   | OHE-projected  | 211     | 44           | 0.4053     | **1.000** | **1.000** | **1.000** | 0.405 | 0.0625      |
+| 42   | **M + OHE**    | **10**  | **10**       | **1.0000** | **1.000** | **1.000** | **1.000** | **1.000** | **0.4340** |
+| 123  | unconstrained  | 201     | 0            | 0.0004     | 0.028     | 0.035 | 0.238 | 0.935     | 0.0736        |
+| 123  | OHE-projected  | 200     | 143          | **0.9332** | **1.000** | **1.000** | **1.000** | 0.933 | 0.0759      |
+| 123  | **M + OHE**    | **2**   | **2**        | **0.9998** | **1.000** | **1.000** | **0.9999** | **0.99992** | **0.4302** |
+| 456  | unconstrained  | 201     | 0            | 0.0003     | 0.059     | 0.038 | 0.204 | 0.180     | 0.0532        |
+| 456  | OHE-projected  | 200     | 55           | 0.1819     | **1.000** | **1.000** | **1.000** | 0.182 | 0.0561      |
+| 456  | **M + OHE**    | **10**  | **10**       | **1.0000** | **1.000** | **1.000** | **1.000** | **1.000** | **0.3624** |
 
-> **Note on numerics.** The 2026-04-22 MVP commit (`74ee475`) reported headline numbers of 215–216 flipped / 128 feas-flipped / 59.7% FSR for OHE-projected. The 2026-04-29 re-run that added M+OHE re-executed Cells 10–12 from scratch and produced the slightly different numbers above (220 flipped / 120 feas-flipped / 54.5% FSR) due to non-deterministic CUDA training. The qualitative findings are unchanged; the table reflects the canonical CSV on disk.
+> **Note on numerics.** This table reflects the **canonical CSV** (`ieee_ohe_projection_results.csv`) produced by the 2026-05-06 mutable-set sweep run, which re-executed all five attacks (unconstrained, oheproj, m_tight, m_oheproj, m_wide) end-to-end. Two earlier runs reported different OHE-projected headline numbers on the same configuration: the 2026-04-22 MVP commit (`74ee475`) reported 215–216 flipped / 128 feas-flipped / 59.7% FSR, and the 2026-04-29 re-run that introduced M+OHE produced 220 flipped / 120 feas-flipped / 54.5% FSR. Both prior runs are superseded by the canonical sweep numbers above. The drift across runs (54.5% → 39.6% FSR) is downstream of non-deterministic CUDA training of the MLP backbone — the trained model's gradients shift between runs, which in turn shifts how many OHE-projected adversarial rows fall within the D-non-negativity-feasible subset. **The qualitative findings are unchanged**: unconstrained CAPGD produces 0 feasible-flipped attacks, OHE projection lifts feasible-flipped well above zero (~81/seed), and M+OHE saturates filtered success at 100% while crashing absolute attack count to ~7/seed.
 
 ---
 
 ## Central finding 1 — OHE projection generalizes the LCLD pattern
 
-Same-model unconstrained vs OHE-projected flipped counts differ by **at most 5 flips on every seed** (219 vs 220, 220 vs 218, 223 vs 222 — net delta ≤ 5/seed). The OHE projection raised filtered success from 0.0% to 54.5% — an **infinite multiplicative jump** (the unconstrained baseline produces zero feasible-flipped attacks across all 3 seeds) — without measurably reducing the attack's ability to flip predictions.
+Same-model unconstrained vs OHE-projected flipped counts differ by **at most 1 flip on every seed** (211 vs 211, 201 vs 200, 201 vs 200 — net delta ≤ 1/seed). The OHE projection raised filtered success from 0.0% to 39.6% — an **infinite multiplicative jump** (the unconstrained baseline produces zero feasible-flipped attacks across all 3 seeds) — without measurably reducing the attack's ability to flip predictions.
 
 This is the same finding established on LCLD by `g1_projection_findings.md`, now reproduced on a second dataset with a completely different constraint structure (3 OHE-validity checks vs 1 nonlinear formula + 1 OHE check). The "constraint-aware attack recovers attack power" pattern at the OHE-projection step is **not** LCLD-specific. It is a property of CAPGD on constrained tabular data: at ε=0.1 the attack does not need to break domain constraints to produce predictive flips; constraint violations are *incidental* to the gradient signal, not load-bearing.
 
@@ -54,18 +54,18 @@ This is the same finding established on LCLD by `g1_projection_findings.md`, now
 
 ## Central finding 2 — but M+OHE reveals a capability-vs-feasibility asymmetry
 
-Where LCLD's M1+g1 saturates filtered success at 100% **and** preserves attack count (~2888/seed feasible-flipped per `g1_projection_findings.md`), IEEE-CIS M+OHE saturates filtered success at 100% **but crashes attack count from ~120 to ~7.7 feasible-flipped per seed (16× drop).** Robust accuracy bounces from 0.155 back to 0.897 — essentially clean accuracy 0.894 — and robust PR-AUC from 0.082 back to 0.402 (clean is 0.446). The model is barely degraded under M+OHE.
+Where LCLD's M1+g1 saturates filtered success at 100% **and** preserves attack count (~2888/seed feasible-flipped per `g1_projection_findings.md`), IEEE-CIS M+OHE saturates filtered success at 100% **but crashes attack count from ~81 to ~7.3 feasible-flipped per seed (11× drop).** Robust accuracy bounces from 0.170 back to 0.883 — essentially clean accuracy 0.901 — and robust PR-AUC from 0.065 back to 0.409 (clean is 0.440). The model is barely degraded under M+OHE.
 
 The two datasets therefore behave **asymmetrically** under the M+structure progression:
 
 |                          | Stock CAPGD                | OHE/g1 projection             | M + structure                              |
 |--------------------------|---------------------------:|------------------------------:|-------------------------------------------:|
 | **LCLD** absolute feasible-flipped | 3                  | ~2200                         | ~2888 (peak)                               |
-| **IEEE-CIS** absolute feasible-flipped | 0              | 120                           | 7.7 (16× **lower** than OHE-only)          |
+| **IEEE-CIS** absolute feasible-flipped | 0              | ~81                           | ~7.3 (11× **lower** than OHE-only)         |
 | LCLD trajectory          | weak                       | strong                        | strongest                                  |
 | IEEE-CIS trajectory      | weak                       | strongest                     | feasibility-saturated, attack-collapsed    |
 
-Per-positive-row normalization does not rescue the symmetry: LCLD M1+g1 ≈ 2888/3500 ≈ 82% of positive-class rows attacked feasibly; IEEE-CIS M+OHE = 7.7/220 ≈ 3.5%. Both datasets have feasibility-saturated attacks at peak, but the *rate* at which a realistic capability profile is attackable differs by an order of magnitude.
+Per-positive-row normalization does not rescue the symmetry: LCLD M1+g1 ≈ 2888/3500 ≈ 82% of positive-class rows attacked feasibly; IEEE-CIS M+OHE ≈ 7.3/204 ≈ 3.6%. Both datasets have feasibility-saturated attacks at peak, but the *rate* at which a realistic capability profile is attackable differs by an order of magnitude.
 
 The structural reason is dimensional. LCLD's M1 leaves 22 of 63 raw features mutable (~35%), and those 22 carry strong predictive signal (loan_amnt, dti, purpose, addr_state, etc.). IEEE-CIS's M leaves 6 of 53 interpretable raw features mutable (~11%), and the 339 opaque V-features that the model leans on are 100% frozen. ε=0.1 perturbations on 10 of 537 processed dimensions don't carry enough gradient signal to budge the model.
 
@@ -106,30 +106,30 @@ This refines Central finding 2: the LCLD-vs-IEEE-CIS asymmetry isn't just "M+OHE
 | Dataset    | Stock CAPGD FSR | Constraint-aware FSR (peak) | Peak feas-flipped per seed | Same-model flip delta | Binding constraint after projection | Capability vs feasibility |
 |------------|----------------:|----------------------------:|---------------------------:|-----------------------:|-------------------------------------|--------------------------|
 | **LCLD**     | 0.05% | 50.2% (g1+OHE) → **100.0% (M1+g1)** | 2888 (M1+g1) | ≤2 flips (g1+OHE)     | g3 bankruptcy (immutability gap)        | **Composable** — attack count rises monotonically across regimes |
-| **IEEE-CIS** | **0.0%** | **54.5% (3-OHE)** → **100.0% (M+OHE)** | **120 (3-OHE) / 7.7 (M+OHE)** | **≤5 flips (3-OHE)** | **D-non-negativity (immutability gap)** | **Trade-off** — M+OHE saturates feasibility but cuts attack count 16× |
+| **IEEE-CIS** | **0.0%** | **39.6% (3-OHE)** → **100.0% (M+OHE)** | **80.7 (3-OHE) / 7.3 (M+OHE)** | **≤1 flip (3-OHE)** | **D-non-negativity (immutability gap)** | **Trade-off** — M+OHE saturates feasibility but cuts attack count 11× |
 
 Both datasets show:
 1. Stock CAPGD produces near-zero filtered success.
-2. A constraint-aware attack at the same ε raises filtered success by 50–60 pp without measurably reducing attack count (≤5 flips on the same model).
+2. A constraint-aware attack at the same ε raises filtered success substantially (50.2pp on LCLD, 39.6pp on IEEE-CIS) without measurably reducing attack count (≤2 flips per seed on the same model).
 3. Adding M-mask saturates filtered success at 100% by closing the immutability gap (g3 / D-non-negativity).
 
-But they differ in step 3's *attack-count* effect. LCLD's M1 adds attack power (~2200 → ~2888). IEEE-CIS's M removes it (~120 → ~7.7). This is the central new finding from the M+OHE follow-up.
+But they differ in step 3's *attack-count* effect. LCLD's M1 adds attack power (~2200 → ~2888). IEEE-CIS's M removes it (~81 → ~7.3). This is the central new finding from the M+OHE follow-up.
 
 ---
 
 ## Per-constraint breakdown
 
-| Constraint          | Unconstrained   | OHE-projected | M + OHE           | Notes |
-|---------------------|----------------:|--------------:|------------------:|-------|
-| `i_product_ohe`     | 0.044           | **1.000**     | **1.000**         | Forced by per-step argmax snap |
-| `i_card4_ohe`       | 0.062           | **1.000**     | **1.000**         | Forced by argmax (card4 also frozen under M) |
-| `i_card6_ohe`       | 0.248           | **1.000**     | **1.000**         | Forced by argmax (card6 also frozen under M) |
-| `i_d_nonneg`        | 0.480 ± 0.413   | 0.483 ± 0.411 | **1.000 ± 0.0001**| Frozen under M → seed-instability collapses to zero |
-| `i_c_nonneg`        | 1.000           | 1.000         | 1.000             | Already at ceiling; M freezes it for safety |
-| `i_amt_positive`    | 1.000           | 1.000         | 1.000             | Already at ceiling |
-| **Aggregate**       | 0.0001 ± 0.0001 | 0.483 ± 0.411 | **1.000 ± 0.0001**| Now bounded above by floating-point only |
+| Constraint          | Unconstrained     | OHE-projected   | M + OHE              | Notes |
+|---------------------|------------------:|----------------:|---------------------:|-------|
+| `i_product_ohe`     | 0.039             | **1.000**       | **1.000**            | Forced by per-step argmax snap |
+| `i_card4_ohe`       | 0.035             | **1.000**       | **1.000**            | Forced by argmax (card4 also frozen under M) |
+| `i_card6_ohe`       | 0.214             | **1.000**       | **1.000**            | Forced by argmax (card6 also frozen under M) |
+| `i_d_nonneg`        | 0.507 ± 0.388     | 0.507 ± 0.386   | **0.99997 ± 0.00005**| Frozen under M → seed-instability collapses to near-zero |
+| `i_c_nonneg`        | 1.000             | 1.000           | 1.000                | Already at ceiling; M freezes it for safety |
+| `i_amt_positive`    | 1.000             | 1.000           | 1.000                | Already at ceiling |
+| **Aggregate**       | 0.00023 ± 0.00021 | 0.507 ± 0.386   | **0.9999 ± 0.0001**  | Now bounded above by floating-point only |
 
-The OHE-projected → M+OHE progression closes the D-non-negativity gap completely (0.483 → 1.000) and **collapses the seed-instability std from 0.413 to 0.0001 — a 4000× variance reduction.** This is the cleanest empirical evidence in the codebase for the prediction in `cross_dataset_feasibility_findings.md` that D-non-negativity variance was traceable to D-field perturbation and would vanish under feature freezing. It also predicts the M-mask behavior on similar timedelta-style fields in other tabular datasets.
+The OHE-projected → M+OHE progression closes the D-non-negativity gap completely (0.507 → 0.9999) and **collapses the seed-instability std from 0.386 to 0.0001 — a ~4000× variance reduction.** This is the cleanest empirical evidence in the codebase for the prediction in `cross_dataset_feasibility_findings.md` that D-non-negativity variance was traceable to D-field perturbation and would vanish under feature freezing. It also predicts the M-mask behavior on similar timedelta-style fields in other tabular datasets.
 
 ---
 
@@ -137,15 +137,15 @@ The OHE-projected → M+OHE progression closes the D-non-negativity gap complete
 
 ### The cross-dataset claim is now a richer story (not a simpler one)
 
-`g1_projection_findings.md` established the headline OHE/g1-projection result on LCLD; this run extends it to IEEE-CIS at the OHE-projection step (54.5% FSR with ≤5-flip same-model delta). At the M+structure step, the two datasets diverge: LCLD M1+g1 saturates at 100% FSR while *increasing* attack power, IEEE-CIS M+OHE saturates at 100% FSR while *crashing* attack power. The paper §5 framing should be:
+`g1_projection_findings.md` established the headline OHE/g1-projection result on LCLD; this run extends it to IEEE-CIS at the OHE-projection step (39.6% FSR with ≤1-flip same-model delta per seed). At the M+structure step, the two datasets diverge: LCLD M1+g1 saturates at 100% FSR while *increasing* attack power, IEEE-CIS M+OHE saturates at 100% FSR while *crashing* attack power. The paper §5 framing should be:
 
-> "At the OHE-projection / g1-projection step, constraint-aware adversarial attacks recover ~50–55pp of filtered success that post-hoc filtering hides on every constrained dataset we tested (LCLD, IEEE-CIS), with same-model flipped-count delta ≤5 flips. Adding a mutability mask saturates filtered success at 100% by closing immutability gaps (g3 / D-non-negativity) on both datasets — but the attack-count effect is dataset-dependent. On LCLD, M1+g1 increases absolute feasible attack count from ~2200 to ~2888; on IEEE-CIS, M+OHE decreases it from ~120 to ~7.7. The asymmetry tracks the relative information density of mutable vs immutable features: LCLD's mutable subset overlaps strongly with predictive features, while IEEE-CIS's predictive signal lives in 339 opaque V-features that any realistic mutability profile must freeze."
+> "At the OHE-projection / g1-projection step, constraint-aware adversarial attacks recover 40–50pp of filtered success that post-hoc filtering hides on every constrained dataset we tested (LCLD, IEEE-CIS), with same-model flipped-count delta ≤2 flips per seed. Adding a mutability mask saturates filtered success at 100% by closing immutability gaps (g3 / D-non-negativity) on both datasets — but the attack-count effect is dataset-dependent. On LCLD, M1+g1 increases absolute feasible attack count from ~2200 to ~2888; on IEEE-CIS, M+OHE decreases it from ~81 to ~7.3. The asymmetry tracks the relative information density of mutable vs immutable features: LCLD's mutable subset overlaps strongly with predictive features, while IEEE-CIS's predictive signal lives in 339 opaque V-features that any realistic mutability profile must freeze."
 
 This is **not** the clean-symmetric paper claim the original ToDo predicted, but it is a stronger result. It distinguishes capability and feasibility as separate axes that compose differently across datasets, and identifies the structural property (mutable-vs-predictive overlap) that determines which regime applies.
 
 ### PR-AUC invariance breaks under M+OHE
 
-Robust PR-AUC was previously locked at 0.07 ± 0.01 across stock vs OHE-projected attacks on IEEE-CIS (matching the "8-axis invariance" pattern documented elsewhere). Under M+OHE it jumps to 0.402 ± 0.046 — recovering most of the way from robust 0.082 toward clean 0.446. **Robust PR-AUC discriminates capability-saturated attacks from capability-suppressed attacks**, where it does not discriminate constraint-aware from constraint-unaware attacks at fixed capability. This is a useful refinement of the PR-AUC sensitivity story for the paper §5 metric-analysis subsection.
+Robust PR-AUC was previously locked at 0.06–0.07 across stock vs OHE-projected attacks on IEEE-CIS (matching the "8-axis invariance" pattern documented elsewhere). Under M+OHE it jumps to 0.409 ± 0.040 — recovering most of the way from robust 0.065 toward clean 0.440. **Robust PR-AUC discriminates capability-saturated attacks from capability-suppressed attacks**, where it does not discriminate constraint-aware from constraint-unaware attacks at fixed capability. This is a useful refinement of the PR-AUC sensitivity story for the paper §5 metric-analysis subsection.
 
 ### The "OHE-validity is universal" claim is unaffected
 
@@ -155,7 +155,7 @@ Robust PR-AUC was previously locked at 0.07 ± 0.01 across stock vs OHE-projecte
 
 ## Caveats
 
-1. ~~**D-non-negativity variance dominates the aggregate-feasibility std.**~~ — **closed by M+OHE 2026-04-29.** The seed-instability of 0.413 in OHE-only collapsed to 0.0001 under M+OHE. The mean (1.000) is the right number to quote; per-seed values are 1.000 / 0.9998 / 1.000 (the 0.9998 on seed 123 is one test row whose clean D-field already failed the check, which the float64 immutable restore preserves correctly).
+1. ~~**D-non-negativity variance dominates the aggregate-feasibility std.**~~ — **closed by M+OHE 2026-04-29.** The seed-instability of 0.386 in OHE-only collapsed to 0.00005 under M+OHE (~8000× variance reduction). The mean (≈1.000) is the right number to quote; per-seed values are 1.000 / 0.99992 / 1.000 (the 0.99992 on seed 123 is one test row whose clean D-field already failed the check, which the float64 immutable restore preserves correctly).
 
 2. ~~**Filtered-success-rate std is huge (0.0/0.18/0.86 across seeds for OHE-only).**~~ — under M+OHE, FSR is 1.000 / 1.000 / 1.000 (per-seed: 9/9, 7/7, 7/7), std ≈ 0. The OHE-only volatility was downstream of the D-non-negativity variance.
 
@@ -163,7 +163,7 @@ Robust PR-AUC was previously locked at 0.07 ± 0.01 across stock vs OHE-projecte
 
 4. **10 CAPGD steps.** Matches every prior run in the benchmark for comparability. M+OHE attack power might recover with more steps (more iterations to optimize within the small mutable subspace).
 
-5. **M+OHE retrains per seed (different init from Cell 10).** Unlike the unconstrained-vs-OHE comparison (which shares the trained MLP per seed via the standard pattern in Cell 10), M+OHE runs in Cell 16 with its own model fit. The flipped-count comparison vs OHE-only is therefore between-model, not strict same-model. Filtered-success rate is a within-row ratio so the 100% saturation is unaffected; the attack-count delta (~120 → 7.7) is between-model. Consistent with the LCLD M1+g1 cell pattern.
+5. **M+OHE retrains per seed (different init from Cell 10).** Unlike the unconstrained-vs-OHE comparison (which shares the trained MLP per seed via the standard pattern in Cell 10), M+OHE runs in Cell 16 with its own model fit. The flipped-count comparison vs OHE-only is therefore between-model, not strict same-model. Filtered-success rate is a within-row ratio so the 100% saturation is unaffected; the attack-count delta (~81 → 7.3) is between-model. Consistent with the LCLD M1+g1 cell pattern.
 
 6. **Class imbalance.** IEEE-CIS pos_weight=27.01 (~3.6% positive class) means flipped-positive counts are an order of magnitude smaller than LCLD's (~220 vs ~2700). The proportional damage at the OHE step is similar; absolute counts are not directly comparable. M+OHE drives counts to single-digit territory where Poisson-style noise becomes meaningful.
 

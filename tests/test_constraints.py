@@ -4,7 +4,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from constraints.schema import ConstraintSchema, FeatureConstraint
-from constraints.validator import ConstraintValidator
+from constraints.validator import ConstraintValidator, EVAL_TOL
 
 
 class TestConstraintSchema:
@@ -188,3 +188,33 @@ class TestConstraintValidator:
 
         sample = pd.Series({"num": np.nan})
         assert validator.validate_sample(sample) is True
+
+    def test_eval_tol_absorbs_ulp_drift_below_zero(self):
+        # Regression: StandardScaler.inverse_transform can leave a non-negative
+        # integer column at -1e-7 instead of exactly 0. Without EVAL_TOL the
+        # strict comparison rejected such rows, inflating per-seed feasibility
+        # variance on LCLD (±0.059 → ±0.0002 after fix).
+        schema = ConstraintSchema()
+        schema.features["pub_rec"] = FeatureConstraint(
+            name="pub_rec", type="numeric", min_val=0.0, max_val=10.0
+        )
+        validator = ConstraintValidator(schema)
+
+        drifted = pd.Series({"pub_rec": -1e-7})
+        clearly_invalid = pd.Series({"pub_rec": -0.01})
+
+        assert validator.validate_sample(drifted) is True
+        assert validator.validate_sample(clearly_invalid) is False
+
+    def test_eval_tol_constructor_override(self):
+        # Tightening eval_tol to 0 restores the pre-fix strict behaviour, which
+        # lets callers reproduce the legacy per-seed variance for ablation.
+        schema = ConstraintSchema()
+        schema.features["pub_rec"] = FeatureConstraint(
+            name="pub_rec", type="numeric", min_val=0.0, max_val=10.0
+        )
+
+        assert EVAL_TOL > 0
+        strict = ConstraintValidator(schema, eval_tol=0.0)
+        drifted = pd.Series({"pub_rec": -1e-7})
+        assert strict.validate_sample(drifted) is False
