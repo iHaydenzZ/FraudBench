@@ -8,7 +8,16 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import seaborn as sns
+
+
+CANONICAL_EPSILON = 0.1
+DEFAULT_EXPERIMENT_EXCLUDE_PATTERNS = ("_z5", "_z10", "eps_sweep")
+
+
+def _seaborn():
+    import seaborn as sns
+
+    return sns
 
 
 NUMERIC_COLS = [
@@ -38,6 +47,37 @@ def load_registry(path: str = "results/registry.csv") -> pd.DataFrame:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
+
+def filter_default_analysis_rows(df: pd.DataFrame, epsilon: float | None = None) -> pd.DataFrame:
+    """Keep canonical analysis rows, excluding z-threshold and epsilon-sweep variants."""
+    out = df.copy()
+    if "experiment_name" in out.columns:
+        names = out["experiment_name"].fillna("").astype(str)
+        keep = pd.Series(True, index=out.index)
+        for pattern in DEFAULT_EXPERIMENT_EXCLUDE_PATTERNS:
+            keep &= ~names.str.contains(pattern, regex=False)
+        out = out[keep]
+    if epsilon is not None and "attack_epsilon" in out.columns:
+        out = out[np.isclose(out["attack_epsilon"], epsilon)]
+    return out.copy()
+
+
+def filter_robustness_curve_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep neural epsilon sweeps plus canonical single-point defences."""
+    out = df.copy()
+    if "model_type" in out.columns:
+        out = out[out["model_type"] == "neural"]
+    if "experiment_name" not in out.columns:
+        return out
+
+    names = out["experiment_name"].fillna("").astype(str)
+    is_sweep = names.str.contains("eps_sweep", regex=False)
+    is_z_variant = names.str.contains("_z5", regex=False) | names.str.contains("_z10", regex=False)
+    is_single_point_defence = (out["defence_type"] != "none") & ~is_z_variant
+    if "attack_epsilon" in out.columns:
+        is_single_point_defence &= np.isclose(out["attack_epsilon"], CANONICAL_EPSILON)
+    return out[is_sweep | is_single_point_defence].copy()
 
 
 def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
@@ -74,11 +114,12 @@ def plot_robustness_bars(df: pd.DataFrame, output_dir: str):
     Filters to ε=0.1 only (canonical epsilon). Groups bars by model_type
     using colour coding.
     """
+    df = filter_default_analysis_rows(df, epsilon=CANONICAL_EPSILON)
     agg = aggregate_seeds(df)
     # Filter to rows that have robust metrics
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
     # Filter to canonical epsilon only
-    agg = agg[np.isclose(agg["attack_epsilon"], 0.1)]
+    agg = agg[np.isclose(agg["attack_epsilon"], CANONICAL_EPSILON)]
 
     datasets = sorted(agg["dataset"].unique())
     n = len(datasets)
@@ -135,6 +176,7 @@ def plot_attack_comparison(df: pd.DataFrame, output_dir: str):
     """
     Figure 2: Robust PR-AUC by attack type and model type (grouped bars).
     """
+    df = filter_default_analysis_rows(df, epsilon=CANONICAL_EPSILON)
     agg = aggregate_seeds(df)
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
 
@@ -143,6 +185,7 @@ def plot_attack_comparison(df: pd.DataFrame, output_dir: str):
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
+    sns = _seaborn()
     sns.barplot(data=agg, x="attack_type", y="robust_pr_auc_mean", hue="model_type", ax=ax, capsize=0.05)
     ax.set_ylabel("Robust PR-AUC (mean across seeds)")
     ax.set_xlabel("Attack Type")
@@ -158,6 +201,7 @@ def plot_summary_table(df: pd.DataFrame, output_dir: str):
     """
     Figure 3: Cross-dataset summary table — mean +/- std, saved as CSV + PNG.
     """
+    df = filter_default_analysis_rows(df)
     agg = aggregate_seeds(df)
     summary_cols = ["dataset", "model_type", "defence_type", "attack_type", "attack_epsilon"]
     metric_pairs = [
@@ -217,6 +261,7 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
     Ensemble defence is compared against the neural 'none' baseline, since
     the ensemble model includes a neural sub-model.
     """
+    df = filter_default_analysis_rows(df, epsilon=CANONICAL_EPSILON)
     agg = aggregate_seeds(df)
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
 
@@ -256,6 +301,7 @@ def plot_defence_heatmap(df: pd.DataFrame, output_dir: str):
     pivot = defended.pivot_table(values="delta", index=["dataset", "attack_type"], columns="defence_type")
 
     fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.5 + 1)))
+    sns = _seaborn()
     sns.heatmap(pivot, annot=True, fmt=".4f", cmap="RdYlGn", center=0, ax=ax)
     ax.set_title("Defence Effectiveness: Delta Robust PR-AUC vs No Defence\n(ensemble compared vs neural baseline)")
     fig.tight_layout()
@@ -268,12 +314,14 @@ def plot_training_time(df: pd.DataFrame, output_dir: str):
     """
     Figure 5: Training time comparison — bar chart by model and defence.
     """
+    df = filter_default_analysis_rows(df)
     agg = aggregate_seeds(df)
     if "train_time_sec_mean" not in agg.columns or agg["train_time_sec_mean"].isna().all():
         print("  Skipping training_time: no timing data available.")
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
+    sns = _seaborn()
     sns.barplot(data=agg, x="model_type", y="train_time_sec_mean", hue="defence_type", ax=ax, capsize=0.05)
     ax.set_ylabel("Training Time (seconds, mean)")
     ax.set_xlabel("Model Type")
@@ -291,17 +339,12 @@ def plot_robustness_curves(df: pd.DataFrame, output_dir: str):
     Shows multi-epsilon sweeps as lines and single-epsilon defences as scatter
     markers.  Filters to neural models only (CAPGD is a no-op on trees).
     """
+    df = filter_robustness_curve_rows(df)
     agg = aggregate_seeds(df)
     agg = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
 
     if agg.empty:
         print("  Skipping robustness_curves: no robust data available.")
-        return
-
-    # Filter to neural models only — CAPGD has no effect on tree models
-    agg = agg[agg["model_type"] == "neural"]
-    if agg.empty:
-        print("  Skipping robustness_curves: no neural model data available.")
         return
 
     # Classify each (dataset, defence, attack) group as multi-epsilon or single

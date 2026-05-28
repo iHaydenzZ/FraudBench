@@ -93,6 +93,104 @@ class TestAggregateSeeds:
         assert len(agg) == 2  # Two dataset groups
 
 
+class TestDefaultFigureFilters:
+    """Tests for canonical figure input filtering."""
+
+    def test_default_filter_excludes_sweep_and_z_threshold_variants(self):
+        from scripts.generate_figures import filter_default_analysis_rows
+
+        df = pd.DataFrame(
+            {
+                "experiment_name": [
+                    "ccfd_neural_input_val",
+                    "ccfd_neural_input_val_z5",
+                    "ccfd_neural_input_val_z10",
+                    "ccfd_neural_eps_sweep",
+                    "ccfd_baseline",
+                ],
+                "attack_epsilon": [0.1, 0.1, 0.1, 0.1, 0.1],
+            }
+        )
+
+        filtered = filter_default_analysis_rows(df)
+
+        assert filtered["experiment_name"].tolist() == [
+            "ccfd_neural_input_val",
+            "ccfd_baseline",
+        ]
+
+    def test_input_validation_degradation_uses_default_rows_only(self):
+        from scripts.analyse_input_validation import aggregate_seeds, compute_degradation
+
+        rows = []
+        for seed, robust in [(1, 0.60), (2, 0.62), (3, 0.64)]:
+            rows.append(
+                {
+                    "experiment_name": "ccfd_baseline",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "clean_pr_auc": 0.80,
+                    "robust_pr_auc": robust,
+                    "robust_f1": 0.1,
+                    "robust_recall": 0.2,
+                }
+            )
+            rows.append(
+                {
+                    "experiment_name": "ccfd_neural_input_val",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "input_validation",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "clean_pr_auc": 0.70,
+                    "robust_pr_auc": 0.50,
+                    "robust_f1": 0.1,
+                    "robust_recall": 0.2,
+                }
+            )
+        rows.extend(
+            [
+                {
+                    "experiment_name": "ccfd_neural_input_val_z5",
+                    "seed": 1,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "input_validation",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "clean_pr_auc": 0.90,
+                    "robust_pr_auc": 0.90,
+                    "robust_f1": 0.9,
+                    "robust_recall": 0.9,
+                },
+                {
+                    "experiment_name": "ccfd_neural_input_val_z10",
+                    "seed": 1,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "input_validation",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "clean_pr_auc": 0.95,
+                    "robust_pr_auc": 0.95,
+                    "robust_f1": 0.95,
+                    "robust_recall": 0.95,
+                },
+            ]
+        )
+
+        deg = compute_degradation(aggregate_seeds(pd.DataFrame(rows)))
+
+        assert len(deg) == 1
+        assert deg["robust_prauc_input_val"].iloc[0] == pytest.approx(0.50)
+
+
 class TestStatisticalTests:
     """Tests for pairwise defence statistical comparisons."""
 
@@ -238,7 +336,60 @@ class TestStatisticalTests:
         row_na = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
         assert not np.isnan(row_na["w_statistic"])
         assert not np.isnan(row_na["w_p_value"])
-        assert row_na["w_p_value"] < 0.05  # large gap → significant
+
+    def test_pairwise_tests_use_canonical_default_epsilon_rows(self):
+        """Epsilon sweep rows must not inflate canonical defence comparisons."""
+        from scripts.statistical_tests import pairwise_defence_tests
+
+        rows = []
+        for seed in (42, 123, 456):
+            rows.append(
+                {
+                    "experiment_name": "ccfd_baseline",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.60,
+                }
+            )
+            rows.append(
+                {
+                    "experiment_name": "ccfd_neural_eps_sweep",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "none",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.95,
+                }
+            )
+            rows.append(
+                {
+                    "experiment_name": "ccfd_neural_adv_train",
+                    "seed": seed,
+                    "dataset": "ccfd",
+                    "model_type": "neural",
+                    "defence_type": "adversarial_training",
+                    "attack_type": "capgd",
+                    "attack_epsilon": 0.1,
+                    "robust_pr_auc": 0.80,
+                }
+            )
+
+        results = pairwise_defence_tests(pd.DataFrame(rows))
+        row = results[
+            (results["defence_a"] == "none")
+            & (results["defence_b"] == "adversarial_training")
+        ].iloc[0]
+
+        assert row["n_a"] == 3
+        assert row["n_b"] == 3
+        assert row["mean_a"] == pytest.approx(0.60)
+        assert np.isnan(row["w_p_value"])
 
     def test_wilcoxon_nan_with_few_seeds(self):
         """Wilcoxon is NaN when n_paired < 6."""

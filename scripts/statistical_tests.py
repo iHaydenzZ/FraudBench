@@ -47,6 +47,10 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
         ("input_validation", "ensemble"),
     ]
 
+    from scripts.generate_figures import CANONICAL_EPSILON, filter_default_analysis_rows
+
+    df = filter_default_analysis_rows(df, epsilon=CANONICAL_EPSILON)
+
     # Detect whether the registry contains actual ensemble model_type data
     has_ensemble_model = (df["model_type"] == "ensemble").any()
 
@@ -62,16 +66,15 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                     continue
 
                 # Cross-model pairing: neural def_a vs ensemble data
-                df_a = grp[grp["defence_type"] == def_a][
-                    ["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]
-                ].dropna()
+                pair_cols = [c for c in ["seed", "attack_type", "attack_epsilon"] if c in grp.columns]
+                df_a = grp[grp["defence_type"] == def_a][pair_cols + ["robust_pr_auc"]].dropna()
                 ens_data = df[
                     (df["dataset"] == dataset) & (df["model_type"] == "ensemble") & (df["defence_type"] == "ensemble")
-                ][["seed", "attack_type", "attack_epsilon", "robust_pr_auc"]].dropna()
+                ][pair_cols + ["robust_pr_auc"]].dropna()
 
                 paired = df_a.merge(
                     ens_data,
-                    on=["seed", "attack_type", "attack_epsilon"],
+                    on=pair_cols,
                     suffixes=("_a", "_b"),
                 )
                 is_cross_model = True
@@ -82,9 +85,10 @@ def pairwise_defence_tests(df: pd.DataFrame) -> pd.DataFrame:
                 continue
             else:
                 # Standard same-model pairing
-                df_a = grp[grp["defence_type"] == def_a][["seed", "robust_pr_auc"]].dropna()
-                df_b = grp[grp["defence_type"] == def_b][["seed", "robust_pr_auc"]].dropna()
-                paired = df_a.merge(df_b, on="seed", suffixes=("_a", "_b"))
+                pair_cols = [c for c in ["seed", "attack_type", "attack_epsilon"] if c in grp.columns]
+                df_a = grp[grp["defence_type"] == def_a][pair_cols + ["robust_pr_auc"]].dropna()
+                df_b = grp[grp["defence_type"] == def_b][pair_cols + ["robust_pr_auc"]].dropna()
+                paired = df_a.merge(df_b, on=pair_cols, suffixes=("_a", "_b"))
                 n_a = len(df_a)
                 n_b = len(df_b)
 

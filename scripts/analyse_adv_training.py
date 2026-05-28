@@ -18,8 +18,10 @@ def load_registry(path: str) -> pd.DataFrame:
 
 
 def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
+    from scripts.generate_figures import filter_default_analysis_rows
     from scripts.generate_figures import aggregate_seeds as _agg
 
+    df = filter_default_analysis_rows(df)
     return _agg(df)
 
 

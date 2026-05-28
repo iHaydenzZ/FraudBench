@@ -375,6 +375,31 @@ uv run python scripts/analyse_input_validation.py --registry results/registry_cl
 
 Results are logged to `results/registry.csv`. Use `results/registry_clean.csv` (deduplicated) for analysis. Figures are saved to `results/figures/`.
 
+## Figure / Data Audit
+
+`scripts/audit_figure_data.py` enforces figure-data consistency before thesis
+submission. It re-derives every committed figure-adjacent CSV from
+`results/registry_clean.csv`, scans the thesis `.tex` tree for stale numeric
+claims, and verifies each `\includegraphics` path in the thesis resolves to a
+committed result figure with a known generator.
+
+```bash
+# Audit committed figures + thesis provenance (writes docs/figure_*audit*.md,
+# docs/thesis_figure_integration_audit.md, results/audit/figure_data_audit.csv)
+uv run --no-sync python -m scripts.audit_figure_data \
+  --tex-root /path/to/Capstone-Thesis
+
+# Tests for the audit + figure generators
+uv run --no-sync python -m pytest tests/test_figures.py tests/test_figure_data_audit.py
+
+# Whitespace / merge-marker check before committing
+git diff --check
+```
+
+The committed audit reports under `docs/` and `results/audit/` are snapshot
+artefacts kept as final-QA evidence; they do not need to be regenerated on
+every commit.
+
 ## Known Limitations
 
 - **Adversarial training + tree/ensemble models**: Adversarial training requires gradients (backpropagation) and is incompatible with tree and ensemble models. The runner raises `ValueError` for these combinations.

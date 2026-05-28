@@ -1,10 +1,11 @@
-"""Analyse why input validation degrades adversarial robustness in FraudBench.
+"""Analyse input-validation effects on adversarial robustness in FraudBench.
 
 Key findings
 ------------
-Input validation (bound clipping + z-score outlier clipping) consistently WORSENS
-adversarial robustness across all four datasets (CCFD, IEEE-CIS, LCLD, Sparkov)
-and both model types (neural, tree).  Three root causes explain this:
+Input validation (bound clipping + z-score outlier clipping) usually WORSENS
+adversarial robustness across the default input-validation runs. LCLD neural is
+the exception in robust PR-AUC, where the default baseline and input-validation
+rows are unchanged at epsilon 0.1. Three root causes explain the degradations:
 
 1. **Redundant bound clipping.**  CAPGD already projects adversarial perturbations
    onto the feasible region defined by the ConstraintSchema, so the min/max bound
@@ -80,6 +81,9 @@ def load_registry(path: str) -> pd.DataFrame:
 
 def aggregate_seeds(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate multi-seed runs: compute mean and std per experiment config."""
+    from scripts.generate_figures import filter_default_analysis_rows
+
+    df = filter_default_analysis_rows(df)
     group_cols = ["dataset", "model_type", "defence_type", "attack_type", "attack_epsilon"]
     metric_cols = [
         "clean_pr_auc",
@@ -224,7 +228,10 @@ def print_summary(deg: pd.DataFrame) -> None:
 
     print(f"{'-' * 80}")
     print("SUMMARY")
-    print(f"  All configs show degradation: {(deg['delta_robust_pr_auc'] < 0).all()}")
+    degraded = int((deg["delta_robust_pr_auc"] < 0).sum())
+    unchanged = int(np.isclose(deg["delta_robust_pr_auc"], 0.0).sum())
+    print(f"  Robust PR-AUC degradation configs: {degraded}/{len(deg)}")
+    print(f"  Robust PR-AUC unchanged configs:   {unchanged}/{len(deg)}")
     print(f"  Mean delta robust PR-AUC (neural): {neural['delta_robust_pr_auc'].mean():+.4f}")
     print(f"  Mean delta robust PR-AUC (tree):   {tree['delta_robust_pr_auc'].mean():+.4f}")
     print(
