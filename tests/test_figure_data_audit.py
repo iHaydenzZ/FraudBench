@@ -199,24 +199,33 @@ def test_thesis_integration_findings_fail_missing_provenance_and_warn_unused(tmp
         },
     )
 
-    assert AuditFinding(
-        "FAIL",
-        "chapter.tex:3 figures/used_without_provenance",
-        "thesis figure has no provenance entry",
-        "matched result figure without provenance: used_without_provenance.png",
-    ) in findings
-    assert AuditFinding(
-        "PASS",
-        "chapter.tex:9 figures/known",
-        "thesis figure has provenance entry",
-        "known.png <- scripts/build_known.py",
-    ) in findings
-    assert AuditFinding(
-        "WARN",
-        str(figures[2]),
-        "result figure exists but is not used in thesis",
-        "provenance=scripts/build_unused.py",
-    ) in findings
+    assert (
+        AuditFinding(
+            "FAIL",
+            "chapter.tex:3 figures/used_without_provenance",
+            "thesis figure has no provenance entry",
+            "matched result figure without provenance: used_without_provenance.png",
+        )
+        in findings
+    )
+    assert (
+        AuditFinding(
+            "PASS",
+            "chapter.tex:9 figures/known",
+            "thesis figure has provenance entry",
+            "known.png <- scripts/build_known.py",
+        )
+        in findings
+    )
+    assert (
+        AuditFinding(
+            "WARN",
+            str(figures[2]),
+            "result figure exists but is not used in thesis",
+            "provenance=scripts/build_unused.py",
+        )
+        in findings
+    )
 
 
 def test_thesis_integration_matches_renamed_thesis_copy_by_content_hash(tmp_path):

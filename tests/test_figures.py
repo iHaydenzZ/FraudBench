@@ -381,10 +381,7 @@ class TestStatisticalTests:
             )
 
         results = pairwise_defence_tests(pd.DataFrame(rows))
-        row = results[
-            (results["defence_a"] == "none")
-            & (results["defence_b"] == "adversarial_training")
-        ].iloc[0]
+        row = results[(results["defence_a"] == "none") & (results["defence_b"] == "adversarial_training")].iloc[0]
 
         assert row["n_a"] == 3
         assert row["n_b"] == 3

@@ -226,8 +226,8 @@ def build_g1_summary(results: pd.DataFrame) -> pd.DataFrame:
     summary = results.groupby("attack").agg(agg_cols)
     summary.columns = ["_".join(c).rstrip("_") for c in summary.columns]
     summary = summary.reset_index()
-    summary["filtered_success_rate"] = (
-        summary["feasible_flipped_mean"] / summary["flipped_positives_mean"].replace(0, np.nan)
+    summary["filtered_success_rate"] = summary["feasible_flipped_mean"] / summary["flipped_positives_mean"].replace(
+        0, np.nan
     )
     order = ["unconstrained", "g1proj", "m1_g1proj"]
     summary["__order"] = summary["attack"].map({key: i for i, key in enumerate(order)})
@@ -260,8 +260,8 @@ def build_ieee_summary(results: pd.DataFrame) -> pd.DataFrame:
     summary = results.groupby("attack").agg(agg_cols)
     summary.columns = ["_".join(c).rstrip("_") for c in summary.columns]
     summary = summary.reset_index()
-    summary["filtered_success_rate"] = (
-        summary["feasible_flipped_mean"] / summary["flipped_positives_mean"].replace(0, np.nan)
+    summary["filtered_success_rate"] = summary["feasible_flipped_mean"] / summary["flipped_positives_mean"].replace(
+        0, np.nan
     )
     for attack, value in extract_ieee_backfill_map().items():
         mask = (summary["attack"] == attack) & summary["n_mutable_dims_mean"].isna()
@@ -328,12 +328,12 @@ def image_integrity(figures: list[Path]) -> list[AuditFinding]:
                 nonblank = any(low != high for low, high in extrema)
                 width, height = rgb.size
             if width <= 10 or height <= 10 or not nonblank:
-                findings.append(
-                    AuditFinding("FAIL", item, "suspicious image size/content", f"size={width}x{height}")
-                )
+                findings.append(AuditFinding("FAIL", item, "suspicious image size/content", f"size={width}x{height}"))
             else:
                 findings.append(
-                    AuditFinding("PASS", item, "valid nonblank image", f"size={width}x{height}; bytes={path.stat().st_size}")
+                    AuditFinding(
+                        "PASS", item, "valid nonblank image", f"size={width}x{height}; bytes={path.stat().st_size}"
+                    )
                 )
         except Exception as exc:  # noqa: BLE001 - audit should report every unreadable image.
             findings.append(AuditFinding("FAIL", item, "unreadable image", str(exc)))
@@ -346,11 +346,7 @@ def provenance_index(results_dir: Path) -> dict[str, list[str]]:
         for path in list((ROOT / "scripts").glob("*.py")) + list((ROOT / "notebooks").glob("*.ipynb"))
         if path != Path(__file__).resolve()
     ]
-    figures = [
-        p
-        for p in results_dir.rglob("*")
-        if p.suffix.lower() in FIGURE_SUFFIXES
-    ]
+    figures = [p for p in results_dir.rglob("*") if p.suffix.lower() in FIGURE_SUFFIXES]
     index: dict[str, list[str]] = {}
     for source in sources:
         try:
@@ -506,9 +502,7 @@ def figure_block_span(text: str, include_start: int, include_end: int) -> tuple[
 
 def surrounding_paragraph_span(text: str, block_start: int, block_end: int) -> tuple[int, int]:
     spans = paragraph_spans(text)
-    overlapping = [
-        idx for idx, (start, end) in enumerate(spans) if start <= block_end and end >= block_start
-    ]
+    overlapping = [idx for idx, (start, end) in enumerate(spans) if start <= block_end and end >= block_start]
     if not overlapping:
         return block_start, block_end
     first = max(0, overlapping[0] - 1)
@@ -636,9 +630,7 @@ def matching_result_figures(
         if exact:
             return exact
         same_stem_and_suffix = [
-            fig
-            for fig in result_figures
-            if fig.stem == resolved.stem and fig.suffix.lower() == resolved.suffix.lower()
+            fig for fig in result_figures if fig.stem == resolved.stem and fig.suffix.lower() == resolved.suffix.lower()
         ]
         if same_stem_and_suffix:
             return same_stem_and_suffix
@@ -905,7 +897,9 @@ def mask_and_metric_checks(results_dir: Path) -> list[AuditFinding]:
                 AuditFinding("FAIL", "results/mask_ablation/mask_ablation_summary.csv", detail, "source mask CSVs")
             )
     except Exception as exc:  # noqa: BLE001
-        findings.append(AuditFinding("FAIL", "results/mask_ablation/mask_ablation_summary.csv", str(exc), "source mask CSVs"))
+        findings.append(
+            AuditFinding("FAIL", "results/mask_ablation/mask_ablation_summary.csv", str(exc), "source mask CSVs")
+        )
 
     try:
         e1 = pd.read_csv(results_dir / "mask_ablation" / "e1_cost_summary.csv")
@@ -932,13 +926,17 @@ def mask_and_metric_checks(results_dir: Path) -> list[AuditFinding]:
             )
         )
     except Exception as exc:  # noqa: BLE001
-        findings.append(AuditFinding("FAIL", "results/mask_ablation/e1_cost_summary.csv", str(exc), "source=e1_cost_summary.csv"))
+        findings.append(
+            AuditFinding("FAIL", "results/mask_ablation/e1_cost_summary.csv", str(exc), "source=e1_cost_summary.csv")
+        )
 
     try:
         leaderboard = pd.read_csv(results_dir / "metric_analysis" / "lcld_leaderboard_reranked.csv")
         correlations = pd.read_csv(results_dir / "metric_analysis" / "rank_correlation_results.csv")
-        expected_f1 = 2 * (leaderboard["precision"] * leaderboard["recall"]) / (
-            leaderboard["precision"] + leaderboard["recall"] + 1e-10
+        expected_f1 = (
+            2
+            * (leaderboard["precision"] * leaderboard["recall"])
+            / (leaderboard["precision"] + leaderboard["recall"] + 1e-10)
         )
         if not np.allclose(expected_f1, leaderboard["f1"], rtol=1e-8, atol=1e-10):
             raise AssertionError("f1 formula mismatch")
@@ -948,9 +946,11 @@ def mask_and_metric_checks(results_dir: Path) -> list[AuditFinding]:
         computed["mcc_normalized"] = (computed["mcc"] + 1) / 2 * 100
         computed["score_mcc"] = (computed["mcc_normalized"] + computed["adv_ctr"] * 100) / 2
         computed["score_auc"] = (computed["auc"] * 100 + computed["adv_ctr"] * 100) / 2
-        computed["score_harmonic"] = 2 * (
-            computed["f1"] * 100 * computed["adv_ctr"] * 100
-        ) / (computed["f1"] * 100 + computed["adv_ctr"] * 100 + 1e-10)
+        computed["score_harmonic"] = (
+            2
+            * (computed["f1"] * 100 * computed["adv_ctr"] * 100)
+            / (computed["f1"] * 100 + computed["adv_ctr"] * 100 + 1e-10)
+        )
         for col in ["score_original", "score_f1", "score_mcc", "score_auc", "score_harmonic"]:
             if not np.allclose(computed[col], leaderboard[col], rtol=1e-8, atol=1e-10):
                 raise AssertionError(f"{col} mismatch")
@@ -989,7 +989,9 @@ def mask_and_metric_checks(results_dir: Path) -> list[AuditFinding]:
             )
         )
     except Exception as exc:  # noqa: BLE001
-        findings.append(AuditFinding("FAIL", "results/metric_analysis/rank_sensitivity_lcld", str(exc), "metric analysis CSVs"))
+        findings.append(
+            AuditFinding("FAIL", "results/metric_analysis/rank_sensitivity_lcld", str(exc), "metric analysis CSVs")
+        )
 
     try:
         comparison = pd.read_csv(results_dir / "metric_analysis" / "adv_advctr_comparison.csv")
@@ -1009,7 +1011,11 @@ def mask_and_metric_checks(results_dir: Path) -> list[AuditFinding]:
             )
         )
     except Exception as exc:  # noqa: BLE001
-        findings.append(AuditFinding("FAIL", "results/metric_analysis/adv_vs_advctr_lcld.png", str(exc), "adv_advctr_comparison.csv"))
+        findings.append(
+            AuditFinding(
+                "FAIL", "results/metric_analysis/adv_vs_advctr_lcld.png", str(exc), "adv_advctr_comparison.csv"
+            )
+        )
 
     return findings
 
@@ -1020,7 +1026,9 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
     excluded_names = default.get("experiment_name", pd.Series(dtype=object)).fillna("").astype(str)
     if excluded_names.str.contains("_z5|_z10|eps_sweep", regex=True).any():
         findings.append(
-            AuditFinding("FAIL", "default figure filters", "z-threshold or epsilon-sweep rows remain", "registry_clean.csv")
+            AuditFinding(
+                "FAIL", "default figure filters", "z-threshold or epsilon-sweep rows remain", "registry_clean.csv"
+            )
         )
     else:
         findings.append(
@@ -1039,7 +1047,11 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
         & np.isclose(agg["attack_epsilon"], CANONICAL_EPSILON)
     ]
     if bars.empty:
-        findings.append(AuditFinding("FAIL", "results/figures/robustness_bars.png", "canonical source slice is empty", "registry_clean.csv"))
+        findings.append(
+            AuditFinding(
+                "FAIL", "results/figures/robustness_bars.png", "canonical source slice is empty", "registry_clean.csv"
+            )
+        )
     else:
         findings.append(
             AuditFinding(
@@ -1053,7 +1065,11 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
     attack_comparison = agg[agg["robust_pr_auc_mean"].notna() & (agg["robust_pr_auc_mean"] > 0)]
     defended = attack_comparison[attack_comparison["defence_type"] != "none"]
     if defended.empty:
-        findings.append(AuditFinding("FAIL", "results/figures/defence_heatmap.png", "defended source slice is empty", "registry_clean.csv"))
+        findings.append(
+            AuditFinding(
+                "FAIL", "results/figures/defence_heatmap.png", "defended source slice is empty", "registry_clean.csv"
+            )
+        )
     else:
         findings.append(
             AuditFinding(
@@ -1068,7 +1084,11 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
     curve_agg = aggregate_seeds(curve_rows)
     counts = curve_agg.groupby(["dataset", "model_type", "defence_type", "attack_type"])["attack_epsilon"].nunique()
     if not (counts > 1).any():
-        findings.append(AuditFinding("FAIL", "results/figures/robustness_curves.png", "no multi-epsilon neural series", "registry_clean.csv"))
+        findings.append(
+            AuditFinding(
+                "FAIL", "results/figures/robustness_curves.png", "no multi-epsilon neural series", "registry_clean.csv"
+            )
+        )
     else:
         findings.append(
             AuditFinding(
@@ -1108,7 +1128,9 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
 
     tree_capgd = default[(default["model_type"] == "tree") & (default["attack_type"] == "capgd")]
     if tree_capgd.empty or not np.allclose(tree_capgd["clean_pr_auc"], tree_capgd["robust_pr_auc"], atol=1e-10):
-        findings.append(AuditFinding("FAIL", "tree + CAPGD no-op invariant", "clean and robust PR-AUC differ", "registry_clean.csv"))
+        findings.append(
+            AuditFinding("FAIL", "tree + CAPGD no-op invariant", "clean and robust PR-AUC differ", "registry_clean.csv")
+        )
     else:
         findings.append(
             AuditFinding(
@@ -1124,7 +1146,9 @@ def core_invariant_checks(registry: pd.DataFrame) -> list[AuditFinding]:
         coverage = hsj.groupby(["dataset", "model_type", "defence_type"])["seed"].nunique()
         incomplete = coverage[coverage < 3]
         if incomplete.empty:
-            findings.append(AuditFinding("PASS", "HSJ seed coverage", "all HSJ groups have 3 seeds", f"groups={len(coverage)}"))
+            findings.append(
+                AuditFinding("PASS", "HSJ seed coverage", "all HSJ groups have 3 seeds", f"groups={len(coverage)}")
+            )
         else:
             findings.append(
                 AuditFinding(
@@ -1205,11 +1229,7 @@ def run_audit(
     thesis_report_path: Path = THESIS_AUDIT_REPORT,
 ) -> tuple[int, list[AuditFinding]]:
     registry = load_registry(str(registry_path))
-    figures = sorted(
-        p
-        for p in results_dir.rglob("*")
-        if p.suffix.lower() in FIGURE_SUFFIXES
-    )
+    figures = sorted(p for p in results_dir.rglob("*") if p.suffix.lower() in FIGURE_SUFFIXES)
 
     findings: list[AuditFinding] = []
     findings.extend(image_integrity(figures))
@@ -1218,9 +1238,7 @@ def run_audit(
     for fig in figures:
         refs = provenance.get(rel(fig), [])
         if refs:
-            findings.append(
-                AuditFinding("PASS", rel(fig), "direct filename provenance found", ", ".join(sorted(refs)))
-            )
+            findings.append(AuditFinding("PASS", rel(fig), "direct filename provenance found", ", ".join(sorted(refs))))
         else:
             findings.append(
                 AuditFinding("WARN", rel(fig), "no direct filename reference in scripts/notebooks", "provenance search")
