@@ -87,7 +87,7 @@ EVAL_TOL = 1e-6   # NAMED_CONSTANT, not a function argument (thesis §3.10 / App
 | Sparkov | `s_state_ohe`, `s_category_ohe`, `s_gender_ohe`, `s_merch_bbox`, `s_city_pop_pos`, `s_amt_positive` | the 3 OHE blocks | `s_state_ohe` |
 | CCFD | none (PCA features) | — | none → negative control |
 
-C2 mask freezes immutable cells (IEEE-CIS: D-fields; LCLD: M1 mask).
+C2 mask freezes immutable cells (LCLD: M1 mask; IEEE-CIS: the repo's documented mutable allow-list `{TransactionAmt, ProductCD, addr1/2, dist1/2}` — i.e. everything else (V*/C*/D*/card*/identity blocks) is frozen, per `ieee_cis_ohe_projection_attack.ipynb` Cell 14 / `constraint_evaluation_guidance.md` §3.3. NB: "D-fields" alone is an inaccurate shorthand — the D-fields are merely the block highlighted for the D-non-negativity variance-reduction point; the actual C2 mask is far wider, which is what reproduces the §4.4 anchor robust-accuracy ≈ 0.88).
 
 ### 1.7 ε grid
 
