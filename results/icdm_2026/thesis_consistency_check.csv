@@ -1,0 +1,5 @@
+dataset,old_mean,old_std,old_n,new_mean,new_std,new_n,delta,flag
+CCFD,0.5809,0.1021,3,0.5978,0.2623,3,0.017,ok
+IEEE-CIS,0.0694,0.01,3,0.0755,0.0134,3,0.0061,ok
+LCLD,0.1051,0.0,3,0.1051,0.0,3,-0.0,ok
+Sparkov,0.0053,0.0,3,0.0054,0.0,3,0.0001,ok

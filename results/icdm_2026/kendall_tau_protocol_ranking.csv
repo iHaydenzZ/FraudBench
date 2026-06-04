@@ -1,0 +1,11 @@
+comparison,dataset,protocol_left,protocol_right,items,ranking_left,ranking_right,kendall_tau,weighted_tau,kt_distance
+strong_defence_B_vs_C,IEEE-CIS,B_posthoc_filter,C1_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+strong_defence_B_vs_C,IEEE-CIS,B_posthoc_filter,C2_mask_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+strong_defence_B_vs_C,LCLD,B_posthoc_filter,C1_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+strong_defence_B_vs_C,LCLD,B_posthoc_filter,C2_mask_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+strong_defence_B_vs_C,Sparkov,B_posthoc_filter,C1_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+strong_defence_B_vs_C,Sparkov,B_posthoc_filter,C2_mask_projection,none|adversarial_training|input_validation,adversarial_training > none > input_validation,adversarial_training > none > input_validation,1.0,1.0,0.0
+free_model_A_vs_B,CCFD,A_unconstrained,B_posthoc_filter,MLP|XGBoost|Ensemble,XGBoost > Ensemble > MLP,XGBoost > Ensemble > MLP,1.0,1.0,0.0
+free_model_A_vs_B,IEEE-CIS,A_unconstrained,B_posthoc_filter,MLP|XGBoost|Ensemble,MLP > Ensemble > XGBoost,XGBoost > Ensemble > MLP,-1.0,-1.0,1.0
+free_model_A_vs_B,LCLD,A_unconstrained,B_posthoc_filter,MLP|XGBoost|Ensemble,XGBoost > Ensemble > MLP,Ensemble > XGBoost > MLP,0.3333,0.1818,0.4091
+free_model_A_vs_B,Sparkov,A_unconstrained,B_posthoc_filter,MLP|XGBoost|Ensemble,XGBoost > Ensemble > MLP,XGBoost > MLP > Ensemble,0.3333,0.5455,0.2273
