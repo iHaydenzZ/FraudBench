@@ -91,6 +91,8 @@ e.g. `s_state_ohe` binding on Sparkov, OHE validity on IEEE-CIS, `g1`
 ### Companion leaderboards (derived, presentation-ready)
 
 Post-hoc rank tables built from the canonical CSVs above (not spec §3.4 outputs).
+Regenerate with `python scripts/generate_leaderboards.py`; its `--check` flag
+verifies the committed files still match what the canonical CSVs produce.
 Both start with `#` comment lines documenting their sources, filters, and caveats —
 import with `pandas.read_csv(..., comment='#')`. Every value has been verified to
 trace back to the canonical CSVs (and, for constraint metrics, to the raw
