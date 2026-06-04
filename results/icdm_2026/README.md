@@ -88,6 +88,23 @@ e.g. `s_state_ohe` binding on Sparkov, OHE validity on IEEE-CIS, `g1`
   `not_applicable`), and `design_axes` mapping the cell onto the benchmark's seven
   design axes (spec §2). Read this to verify nothing in the claimed matrix is missing.
 
+### Companion leaderboards (derived, presentation-ready)
+
+Post-hoc rank tables built from the canonical CSVs above (not spec §3.4 outputs).
+Both start with `#` comment lines documenting their sources, filters, and caveats —
+import with `pandas.read_csv(..., comment='#')`. Every value has been verified to
+trace back to the canonical CSVs (and, for constraint metrics, to the raw
+adversarial Parquets). Stds are sample std (ddof=1), same as the `*_summary.csv` files.
+
+- **`icdm_leaderboard_defence.csv`** (12 rows) — MLP defence configs ranked by robust
+  PR-AUC under the *deployment-aware* protocol (C2; A for unconstrained CCFD), CAPGD
+  ε=0.1. Shows adversarial_training > none > input_validation on constrained datasets
+  (input_validation falls below no-defence); the CCFD ranking is seed-unstable.
+- **`icdm_leaderboard_model_family.csv`** (12 rows) — model families (MLP/XGBoost/
+  Ensemble) ranked under Square Protocol A vs B per dataset, with the A→B weighted-KT
+  distance and `aggregate_feasibility_A_mean` explaining the A→B robustness jump.
+  The rank columns make the IEEE-CIS A→B inversion directly visible.
+
 ---
 
 ## 4. Diagnostics (the NB3 analyses)

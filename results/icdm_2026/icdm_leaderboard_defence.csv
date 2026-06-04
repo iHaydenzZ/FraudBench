@@ -1,0 +1,24 @@
+# FraudBench ICDM 2026 - Defence robustness leaderboard (companion)
+# Generated: 2026-06-04
+# Source files: capgd_grid_summary.csv (derived from capgd_grid_results.csv)
+# Filter: model=MLP, attack=CAPGD (white-box), epsilon=0.1, defence in {none, adversarial_training, input_validation}
+# Aggregation: mean/std over seeds 42,123,456 (n=3)
+# Attack note: CAPGD is used because the defence layer is MLP-only and CAPGD is its proper white-box attack (differs from the model-family table, which uses Square).
+# deploy_protocol: C2 (deployment-aware: in-attack projection + mutability mask) for constrained datasets; A (unconstrained) for CCFD, which has no binding constraints.
+# rank_deploy: 1 = most robust (highest robust PR-AUC) under the deployment-aware protocol within the dataset.
+# Key finding: adversarial_training > none > input_validation on constrained datasets; input_validation falls BELOW no-defence (anti-pattern).
+# Caveat: CCFD has high seed variance (std ~0.23-0.30); CCFD defence ranking is NOT meaningful (seed-unstable).
+# Comment lines start with '#'; import with pandas.read_csv(comment='#') or delete these rows in Sheets.
+dataset,defence,deploy_protocol,robust_pr_auc_A_mean,robust_pr_auc_deploy_mean,robust_pr_auc_deploy_std,rank_deploy,robust_accuracy_deploy_mean
+CCFD,adversarial_training,A,0.5795,0.5795,0.2253,2,0.9976
+CCFD,none,A,0.5978,0.5978,0.2623,1,0.9962
+CCFD,input_validation,A,0.5718,0.5718,0.3004,3,0.996
+IEEE-CIS,adversarial_training,C2,0.2754,0.4529,0.0225,1,0.8903
+IEEE-CIS,none,C2,0.0755,0.4121,0.0331,2,0.8857
+IEEE-CIS,input_validation,C2,0.0186,0.3668,0.0339,3,0.8657
+LCLD,adversarial_training,C2,0.2961,0.3157,0.0035,1,0.5923
+LCLD,none,C2,0.1051,0.1051,0.0,2,0.1705
+LCLD,input_validation,C2,0.1051,0.1051,0.0,3,0.177
+Sparkov,adversarial_training,C2,0.2136,0.5773,0.0516,1,0.9453
+Sparkov,none,C2,0.0054,0.5006,0.0334,2,0.9436
+Sparkov,input_validation,C2,0.0054,0.3261,0.0133,3,0.76

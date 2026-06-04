@@ -1,0 +1,26 @@
+# FraudBench ICDM 2026 - Model-family robustness leaderboard (enriched)
+# Generated: 2026-06-04
+# Source files: square_family_summary.csv, square_family_results.csv, kendall_tau_protocol_ranking.csv
+# Filter: attack=Square (score-based black-box), defence=none, epsilon=0.1
+# Aggregation: mean/std over seeds 42,123,456 (n=3)
+# Std convention: sample std (ddof=1), consistent with the *_summary.csv files.
+# Attack note: Square is used because it is the only cross-model-comparable axis (CAPGD is white-box / MLP-only).
+# Protocols: A=unconstrained; B=post-hoc feasibility filter (TabularBench ADV+CTR convention).
+# rank_A/rank_B: 1 = most robust (highest robust PR-AUC) within the dataset under that protocol.
+# kendall_tau_distance_A_to_B: weighted Kendall-Tau distance between A-ranking and B-ranking of the 3 models (0=identical, 1=full reversal); dataset-level, repeated per row.
+# aggregate_feasibility_A_mean: fraction of unconstrained-Square adversarial examples passing the full constraint conjunction; explains the A->B robustness jump.
+# Caveat: CCFD robust PR-AUC has high seed variance (std ~0.22); CCFD ranking is NOT stable (seed-unstable).
+# Comment lines start with '#'; import with pandas.read_csv(comment='#') or delete these rows in Sheets.
+dataset,model,clean_pr_auc_mean,clean_pr_auc_std,robust_pr_auc_A_mean,robust_pr_auc_A_std,rank_A,robust_pr_auc_B_mean,robust_pr_auc_B_std,rank_B,robust_roc_auc_A_mean,robust_roc_auc_B_mean,aggregate_feasibility_A_mean,kendall_tau_distance_A_to_B
+CCFD,XGBoost,0.8149,0.19,0.7745,0.2232,1,0.7745,0.2232,1,0.9879,0.9879,1.0,0.0
+CCFD,Ensemble,0.7922,0.2196,0.7278,0.2369,2,0.7278,0.2369,2,0.9652,0.9652,1.0,0.0
+CCFD,MLP,0.683,0.1887,0.6508,0.2159,3,0.6508,0.2159,3,0.9202,0.9202,1.0,0.0
+IEEE-CIS,XGBoost,0.566,0.0142,0.0373,0.0236,3,0.548,0.0331,1,0.2942,0.8953,0.0316,1.0
+IEEE-CIS,Ensemble,0.5197,0.0241,0.0634,0.0157,2,0.5159,0.0249,2,0.5271,0.875,0.125,1.0
+IEEE-CIS,MLP,0.4328,0.0327,0.1088,0.0239,1,0.4316,0.0336,3,0.4357,0.8091,0.2183,1.0
+LCLD,XGBoost,0.3683,0.0045,0.1788,0.0224,1,0.3595,0.002,2,0.4793,0.7073,0.2433,0.4091
+LCLD,Ensemble,0.3694,0.0021,0.1392,0.0049,2,0.3672,0.0032,1,0.3332,0.7046,0.3798,0.4091
+LCLD,MLP,0.3084,0.003,0.1206,0.0028,3,0.3054,0.002,3,0.2029,0.6523,0.3887,0.4091
+Sparkov,XGBoost,0.7467,0.0084,0.109,0.0095,1,0.6785,0.0629,1,0.8926,0.9875,0.195,0.2273
+Sparkov,Ensemble,0.5074,0.0793,0.0735,0.0099,2,0.5067,0.0787,3,0.8353,0.9705,0.0135,0.2273
+Sparkov,MLP,0.6256,0.0332,0.0033,0.0001,3,0.6249,0.0334,2,0.2084,0.9597,0.4395,0.2273
