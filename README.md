@@ -8,7 +8,7 @@ A reproducible benchmark suite for evaluating adversarial robustness of fraud de
 - **Models**: Tree-based (XGBoost) and Neural (MLP) with automatic class weighting
 - **Attacks**: CAPGD (white-box), HopSkipJump (decision-based black-box), Square Attack (score-based black-box)
 - **Defences**: Adversarial training, input validation, and ensemble (heterogeneous model voting)
-- **Metrics**: PR-AUC, precision, recall, F1 (fraud-first evaluation)
+- **Metrics**: PR-AUC, precision, recall, F1 (fraud-first evaluation); feasibility-aware attack metrics (aggregate feasibility, feasible-flipped count, filtered success rate)
 - **Reproducibility**: Config-driven experiments with cached splits and preprocessing
 - **Multi-seed evaluation**: 3 seeds per config for statistical rigour
 
@@ -36,28 +36,10 @@ uv run python -m runner.run --config configs/mvp.yaml
 
 ## Benchmark Results
 
-### CCFD (Full Dataset - 284,807 samples)
+Results live in the repository rather than inline here, so this README cannot drift from the registries:
 
-| Metric | Clean | Robust (CAPGD) | Change |
-|--------|-------|----------------|--------|
-| PR-AUC | 0.758 | 0.638 | -15.8% |
-| Recall | 88.8% | 85.7% | -3.5% |
-| Precision | 18.8% | 3.4% | -81.9% |
-
-- Model: Neural MLP (128 hidden, 20 epochs)
-- Attack: CAPGD (epsilon=0.1, 10 steps)
-- Training time: 10.5s | Attack time: 0.24s
-
-### IEEE-CIS (10% Sample - 59,054 samples)
-
-| Metric | Value |
-|--------|-------|
-| PR-AUC | 0.582 |
-| Recall | 34.1% |
-| Precision | 84.2% |
-
-- Model: XGBoost (depth 6, 100 estimators)
-- Note: Tree models don't support gradient-based attacks (CAPGD); use HopSkipJump or Square Attack
+- **ICDM 2026 evidence base**: [`results/icdm_2026/`](results/icdm_2026/README.md) — the canonical paper results: protocol comparison grid (unconstrained / post-hoc filtering / constraint-integrated attacks), model-family leaderboards, defence leaderboards, and figures. `icdm_master_registry.csv` (390 rows) is the source for every paper table.
+- **Thesis / legacy registry**: `results/registry_clean.csv` (182 deduplicated rows) — canonical for pre-ICDM analysis scripts.
 
 ## Project Structure
 
@@ -84,7 +66,7 @@ FraudBench/
 |---------|---------|----------|------------|--------|
 | CCFD | 284,807 | 30 | 0.17% | Kaggle (real) |
 | IEEE-CIS | 590,540 | 392 | 3.5% | IEEE-CIS / Vesta (real) |
-| LCLD | ~2.26M (filtered) | 63 | 19.6% | Lending Club (real) |
+| LCLD | ~1.34M (filtered from ~2.26M raw) | 63 | 19.6% | Lending Club (real) |
 | Sparkov | ~1.85M | 11 | 0.52% | Sparkov (simulated) |
 
 See `datasets/cards/` for detailed dataset documentation (preprocessing, known issues, citation).
@@ -306,7 +288,7 @@ defence:
 ```
 
 ### Ensemble
-Heterogeneous model ensemble (LR + XGBoost + MLP) with soft voting. Diversity across model families is the defensive mechanism.
+Heterogeneous model ensemble (LR + XGBoost + MLP) with soft voting. Diversity across model families is the defensive mechanism. In benchmark reporting this is interpreted as a cross-model comparison (a model-family configuration) rather than a neural-model defence.
 ```yaml
 model:
   type: "ensemble"
