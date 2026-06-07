@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11, PyTorch, pandas, scikit-learn, Jupyter/Colab. Existing FraudBench modules: `datasets.loader`, `preprocessing.processor`, `constraints.schema`, `models.neural`, `evaluation.metrics`, `attacks.capgd`.
 
-**Execution environment:** Google Colab with A100 GPU. Repo at `/content/Capstone_FraudBench`, dataset symlinked from Google Drive. There is NO local `pytest` flow for this notebook — verification is by inspecting cell output against expected counts/ranges documented in each task.
+**Execution environment:** Google Colab with A100 GPU. Repo at `/content/FraudBench`, dataset symlinked from Google Drive. There is NO local `pytest` flow for this notebook — verification is by inspecting cell output against expected counts/ranges documented in each task.
 
 **Reference spec:** `docs/plans/mask_ablation_experiment_plan.md` (read before starting — defines the scientific rationale for each variant).
 
@@ -55,7 +55,7 @@ Each task below produces a self-contained notebook cell (or cell block). Commit 
 
 - [ ] **Step 1: Create the empty notebook file**
 
-In Colab: File → New notebook → rename to `mask_ablation.ipynb`. Save to `/content/Capstone_FraudBench/notebooks/`.
+In Colab: File → New notebook → rename to `mask_ablation.ipynb`. Save to `/content/FraudBench/notebooks/`.
 
 Alternatively, locally:
 

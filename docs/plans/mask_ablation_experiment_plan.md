@@ -13,7 +13,7 @@
 
 - **Runtime**: GPU (A100 preferred)
 - **Google Drive mount**: `/content/drive/MyDrive/FraudBench/`
-- **Repo clone**: `https://github.com/iHaydenzZ/Capstone_FraudBench.git` → `/content/Capstone_FraudBench`
+- **Repo clone**: `https://github.com/iHaydenzZ/FraudBench.git` → `/content/FraudBench`
 - **Dataset symlink**: `datasets/LCLD` → Google Drive `data/LCLD/`
 - **Dependencies**: Same `pip install` block as reference notebook Cell 4, restart runtime after install
 - Copy Cells 1–5 from `tabularbench_comparison.ipynb` exactly. No changes needed.

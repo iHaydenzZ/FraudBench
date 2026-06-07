@@ -38,7 +38,7 @@ Not "a more financial TabularBench / a complement," not "a new constrained attac
 
 ### 1.1 Repository and paths
 
-- Repo (local): `/Users/xitong/Local_Document/githubClone/Capstone_FraudBench`
+- Repo (local): `/Users/xitong/Local_Document/githubClone/FraudBench`
 
 ```text
 results/adv_examples/icdm_capgd_grid/        # NB1 outputs (incl. saved adversarial parquet)

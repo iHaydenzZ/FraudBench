@@ -545,7 +545,7 @@ Expected: installs succeed and the kernelspec line prints `Installed kernelspec 
 - [ ] **Step 2a: Execute the notebook in place** (the notebook's metadata names the `fraudbench-venv` kernel registered above)
 
 ```bash
-cd /Users/xitong/Local_Document/githubClone/Capstone_FraudBench && .venv/bin/jupyter execute --inplace --kernel_name=fraudbench-venv notebooks/icdm_consolidate_and_diagnose.ipynb
+cd /Users/xitong/Local_Document/githubClone/FraudBench && .venv/bin/jupyter execute --inplace --kernel_name=fraudbench-venv notebooks/icdm_consolidate_and_diagnose.ipynb
 ```
 
 Expected: exits 0. (Cell 1 chdirs to the repo root regardless of the kernel's start dir. If `--kernel_name` is not recognised by the installed nbclient version, drop the flag — the notebook metadata carries the same kernel name.)

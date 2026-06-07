@@ -3,10 +3,10 @@
 ## Quick Links (update after pushing to GitHub)
 
 - **Experiment Runner**:
-  `https://colab.research.google.com/github/YOUR_USERNAME/Capstone_FraudBench/blob/master/notebooks/colab_runner.ipynb`
+  `https://colab.research.google.com/github/YOUR_USERNAME/FraudBench/blob/master/notebooks/colab_runner.ipynb`
 
 - **Debug Notebook**:
-  `https://colab.research.google.com/github/YOUR_USERNAME/Capstone_FraudBench/blob/master/notebooks/colab_debug.ipynb`
+  `https://colab.research.google.com/github/YOUR_USERNAME/FraudBench/blob/master/notebooks/colab_debug.ipynb`
 
 ## Manual Steps
 

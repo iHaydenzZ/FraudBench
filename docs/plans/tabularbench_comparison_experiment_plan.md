@@ -28,7 +28,7 @@ From `tabularbench_comparison.ipynb` (seed=42, LCLD neural baseline, ε=0.1):
 | Aggregate feasibility | `compute_aggregate_feasibility()` | returns (per_sample_bool, rate, n_constraints) |
 
 Parquet files exist in two locations (Cell 15 copies local → Drive):
-- **Local (during Colab execution):** `results/adv_examples/` (relative to repo root `/content/Capstone_FraudBench`)
+- **Local (during Colab execution):** `results/adv_examples/` (relative to repo root `/content/FraudBench`)
 - **Google Drive (persistent backup):** `/content/drive/MyDrive/FraudBench/results/adv_examples/`
 
 The original notebook's Cell 11 (inverse-transform) reads from the **local** path via `ADV_SAVE_DIR = "results/adv_examples"`. The new notebook should load from Google Drive (since it runs in a fresh Colab session without the local artifacts).
@@ -37,8 +37,8 @@ The original notebook's Cell 11 (inverse-transform) reads from the **local** pat
 - Google Drive is mounted at `/content/drive`
 - `DRIVE_ROOT = "/content/drive/MyDrive/FraudBench"` — top-level Drive folder
 - `DRIVE_DATA = "/content/drive/MyDrive/FraudBench/data"` — raw datasets on Drive
-- Datasets are symlinked: `DRIVE_DATA/{LCLD,CCFD,...}` → `/content/Capstone_FraudBench/datasets/{LCLD,CCFD,...}`
-- Repo is cloned to `/content/Capstone_FraudBench` and `pip install -e .` makes project imports work
+- Datasets are symlinked: `DRIVE_DATA/{LCLD,CCFD,...}` → `/content/FraudBench/datasets/{LCLD,CCFD,...}`
+- Repo is cloned to `/content/FraudBench` and `pip install -e .` makes project imports work
 
 ### What the new notebook produces
 
@@ -116,9 +116,9 @@ DRIVE_ADV  = os.path.join(DRIVE_ROOT, "results/adv_examples")
 DRIVE_DATA = os.path.join(DRIVE_ROOT, "data")
 
 # === STEP 3: Clone repo ===
-REPO_DIR = "/content/Capstone_FraudBench"
+REPO_DIR = "/content/FraudBench"
 if not os.path.exists(os.path.join(REPO_DIR, ".git")):
-    !git clone https://github.com/iHaydenzZ/Capstone_FraudBench.git {REPO_DIR}
+    !git clone https://github.com/iHaydenzZ/FraudBench.git {REPO_DIR}
 os.chdir(REPO_DIR)
 
 # === STEP 4: Install deps ===
@@ -140,14 +140,14 @@ if not os.path.exists("/content/drive/MyDrive"):
     from google.colab import drive
     drive.mount('/content/drive')
 
-os.chdir("/content/Capstone_FraudBench")
+os.chdir("/content/FraudBench")
 
 DRIVE_ROOT = "/content/drive/MyDrive/FraudBench"
 DRIVE_ADV  = os.path.join(DRIVE_ROOT, "results/adv_examples")
 DRIVE_DATA = os.path.join(DRIVE_ROOT, "data")
 
 # === Symlink datasets (needed for load_dataset + preprocessor fitting) ===
-DATASETS_DIR = "/content/Capstone_FraudBench/datasets"
+DATASETS_DIR = "/content/FraudBench/datasets"
 for d in ["CCFD", "ieee-fraud-detection", "LCLD", "Sparkov"]:
     src, dst = os.path.join(DRIVE_DATA, d), os.path.join(DATASETS_DIR, d)
     if os.path.islink(dst): os.unlink(dst)
